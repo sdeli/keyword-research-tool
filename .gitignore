@@ -5,7 +5,7 @@
 src/assets/*
 
 test/*
-!test/.gitkeep
+!**/.gitkeep
 
 .env
 
@@ -39,3 +39,4 @@ lerna-debug.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+src/controllers/keyword-analizer/keyword-io/asd
