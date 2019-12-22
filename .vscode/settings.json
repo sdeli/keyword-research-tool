@@ -1,0 +1,7 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": false,
+  "editor.tabCompletion": "off",
+  "editor.tabSize": 2,
+  "autoimport.showNotifications": true
+}

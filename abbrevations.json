@@ -1,0 +1,22 @@
+{
+  "val": "value",
+  "sel": "slector",
+  "cont": "container",
+  "arr": "array",
+  "obj": "object",
+  "dest": "destionation",
+  "char": "character",
+  "comm": "command",
+  "req": "request",
+  "res": "respond",
+  "msg": "message",
+  "opts": "options",
+  "imp": "important",
+  "prop": "property",
+  "Scma": "Schema",
+  "strm": "stream",
+  "red": "redirect",
+  "succ": "success",
+  "kywIo": "keywordtool.io",
+  "KywRes": "keyword research"
+}

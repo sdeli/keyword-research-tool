@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "target": "es2017",
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "inlineSourceMap": true,
+    "preserveSymlinks": true,
+    "paths": {
+      "@keyword-analizer/*": ["src/controllers/keyword-analizer/*"],
+      "@utils/*": ["src/shared/utils/*"],
+      "@assets/*": ["src/assets/*"],
+      "@config": ["src/config/index"]
+    }
+  },
+  "exclude": ["node_modules", "dist"],
+  "include": ["src"]
+}
