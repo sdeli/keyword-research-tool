@@ -17,6 +17,17 @@ const localModulConfigurations = {
     },
     cookies: [],
   },
+  ubersuggest: {
+    headless: globalConfigs.headless,
+    url: 'https://app.neilpatel.com/en/ubersuggest/overview?lang=hu&locId=2348&keyword=gyerek+j%C3%A1t%C3%A9kok',
+    domain: 'https://app.neilpatel.com',
+    selectors: {
+      researchKeywordInput: '#edit-keyword--3',
+      startKywResBtn: '#edit-submit--4',
+      keywordsAppearedBox: '#search-1-wrapper .pro-upsell-table',
+    },
+    cookies: [],
+  },
   utils: {
     cookiesFilePath: `${process.cwd()}/src/assets/cookies.json`,
     localStorageFilePath: `${process.cwd()}/src/assets/local-storage.json`,

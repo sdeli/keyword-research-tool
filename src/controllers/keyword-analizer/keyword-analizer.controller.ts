@@ -1,9 +1,13 @@
+import { UbersuggestService } from './ubersuggest/ubersuggest.service';
 import { Controller, Post, Get, Header, Param } from '@nestjs/common';
-import { KeywordAnalizerService } from './keyword-analizer.service';
+import { KeywordIoService } from './keyword-io/keyword-io.service';
 
 @Controller('keyword')
 export class KeywordAnalizerController {
-  constructor(private readonly service: KeywordAnalizerService) {}
+  constructor(
+    private readonly kywIoService: KeywordIoService,
+    private readonly ubersuggestService: UbersuggestService,
+  ) {}
 
   @Get()
   @Header('content-type', 'text/plain')
@@ -27,7 +31,12 @@ export class KeywordAnalizerController {
   }
 
   @Get('analize-one/:keyword/:deepness')
-  analizeOne(@Param('keyword') keyword: string, @Param('deepness') deepness: number) {
-    this.service.analizeOne(keyword, deepness);
+  getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
+    this.kywIoService.getSuggestionsForOne(keyword);
+  }
+
+  @Get('analize-one/:keyword/:deepness')
+  getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
+    this.ubersuggestService.getAnaliticsForOne(keyword);
   }
 }

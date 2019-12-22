@@ -1,4 +1,4 @@
-export interface KeywordAnalizerConfigI {
+export interface KeywordIoConfigI {
   url: string;
   domain: string;
   headless: boolean;
@@ -9,5 +9,13 @@ export interface KeywordAnalizerConfigI {
     keywordsAppearedBox: string;
     keywordCells: string;
   };
+  cookies: string[];
+}
+
+export interface UbersuggestConfigI {
+  url: string;
+  domain: string;
+  headless: boolean;
+  selectors: {};
   cookies: string[];
 }

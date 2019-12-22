@@ -1,28 +1,55 @@
-import { UtilsService } from '@utils/utils/utils.service';
-import { Page } from 'puppeteer';
+import * as puppeteer from 'puppeteer';
+import { Page, Browser } from 'puppeteer';
+
+import { PuppeteerUtilsService } from '@utils/puppeteer-utils/pupeteer-utils.service';
 import { Injectable, Inject } from '@nestjs/common';
-import { KeywordAnalizerConfigI } from './keyword-analizer.interfaces';
-import { KEYWORD_ANALIZER_CONFIG_TOKEN } from './keyword-analizer.types';
-import { GetPageOnKeywordIoService } from './get-page-on-keyword-io/get-page-on-keyword-io.service';
+import { KeywordIoConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { KEYWORD_ANALIZER_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 
 @Injectable()
-export class KeywordAnalizerService {
+export class KeywordIoService {
   constructor(
-    @Inject(KEYWORD_ANALIZER_CONFIG_TOKEN) private readonly config: KeywordAnalizerConfigI,
-    private readonly utils: UtilsService,
-    private readonly getPageOnKywdIo: GetPageOnKeywordIoService,
+    @Inject(KEYWORD_ANALIZER_CONFIG_TOKEN) private readonly config: KeywordIoConfigI,
+    private readonly puppeteerUtils: PuppeteerUtilsService,
   ) {}
 
-  async analizeOne(keyword: string, deepness: number) {
-    const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo.do(this.config.url, this.config.headless);
-    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/page1.png' });
+  async getSuggestionsForOne(keyword: string) {
+    const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo();
+    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/kywio1.png' });
 
     await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
-    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/page2.png' });
-    await this.downloadKywResCsv(pageOnKwIo);
-    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/page3.png' });
+    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/kywio2.png' });
+
+    await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo);
+    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/kywio3.png' });
 
     // await browser.close();
+  }
+
+  async getPageOnKywdIo(): Promise<{
+    browser: Browser;
+    page: Page;
+  }> {
+    const { url, headless } = this.config;
+
+    const browser: Browser = await puppeteer.launch({
+      headless,
+      args: ['--profile-directory="/Users/sandordeli/Documents"', '--no-sandbox'],
+      userDataDir: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/user-data',
+    });
+
+    let page: Page = await browser.newPage();
+
+    page = await this.puppeteerUtils.preparePageForDetection(page);
+    await page.goto(url);
+
+    const isDetectableObj = await this.puppeteerUtils.isPageDetectable(page);
+    console.log(isDetectableObj);
+
+    return {
+      browser,
+      page,
+    };
   }
 
   private async researchForKeywordOnKywIo(pageOnKwIo: Page, keyword: string): Promise<void> {
@@ -45,7 +72,7 @@ export class KeywordAnalizerService {
     await pageOnKwIo.waitForSelector(keywordsAppearedBox);
   }
 
-  private async downloadKywResCsv(pageOnKwIo: Page): Promise<void> {
+  private async downloadKywSuggestionsCsvFromKywIo(pageOnKwIo: Page): Promise<void> {
     const { downloadCsvBtn } = this.config.selectors;
     const client = await pageOnKwIo.target().createCDPSession();
     await client.send('Page.setDownloadBehavior', {
