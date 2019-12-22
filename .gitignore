@@ -3,7 +3,9 @@
 /node_modules
 
 src/assets/*
+
 test/*
+!test/.gitkeep
 
 # Logs
 logs
