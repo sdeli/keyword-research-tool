@@ -2,19 +2,19 @@ import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interface
 import * as puppeteer from 'puppeteer';
 import { Injectable, Inject } from '@nestjs/common';
 import { Browser, Page } from 'puppeteer';
-import { KeywordIoConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 
-import { KEYWORD_ANALIZER_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+import { UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { PuppeteerUtilsService } from '@utils/puppeteer-utils/pupeteer-utils.service';
 
 @Injectable()
 export class UbersuggestService {
   constructor(
-    @Inject(KEYWORD_ANALIZER_CONFIG_TOKEN) private readonly config: UbersuggestConfigI,
+    @Inject(UBERSUGGEST_CONFIG_TOKEN) private readonly config: UbersuggestConfigI,
     private readonly puppeteerUtils: PuppeteerUtilsService,
   ) {}
-  async getAnaliticsForOne(keyword: string) {
-    const { browser, page: pageOnKwIo } = await this.getPageOnUbersuggest();
+
+  async getAnaliticsForOne(/*keyword: string*/) {
+    const { /*browser,*/ page: pageOnKwIo } = await this.getPageOnUbersuggest();
     await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/ubersugg1.png' });
   }
 

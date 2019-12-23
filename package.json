@@ -11,7 +11,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
-    "pretty": "prettier-cli-watcher --configpath='.prettierrc.json'",
+    "pretty": "prettier-cli-watcher --configpath='.prettierrc.json' --ignore-path= .idea/*",
     "warn-check-paths": "grep -r '\\.\\./' ./src/; if [ $(grep -r '\\.\\./' ./src/ | wc -l) -gt 0 ]; then echo '../ is not allowed';  exit 1; else echo 'all imports are cool'; fi;",
     "check-paths": "grep -r '\\.\\./' ./src/",
     "start:debug": "nodemon --config ./nodemon.json",

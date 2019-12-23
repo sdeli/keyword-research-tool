@@ -1,5 +1,5 @@
 import { UbersuggestService } from './ubersuggest/ubersuggest.service';
-import { Controller, Post, Get, Header, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param } from '@nestjs/common';
 import { KeywordIoService } from './keyword-io/keyword-io.service';
 
 @Controller('keyword')
@@ -30,12 +30,12 @@ export class KeywordAnalizerController {
   `;
   }
 
-  @Get('analize-one/:keyword/:deepness')
+  @Get('suggestions/:keyword/:deepness')
   getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
     this.kywIoService.getSuggestionsForOne(keyword);
   }
 
-  @Get('analize-one/:keyword/:deepness')
+  @Get('analitics/:keyword/:deepness')
   getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
     this.ubersuggestService.getAnaliticsForOne(keyword);
   }
