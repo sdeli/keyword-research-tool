@@ -14,8 +14,10 @@ export class UbersuggestService {
   ) {}
 
   async getAnaliticsForOne(/*keyword: string*/) {
-    const { /*browser,*/ page: pageOnKwIo } = await this.getPageOnUbersuggest();
-    await pageOnKwIo.screenshot({ path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/ubersugg1.png' });
+    const { /*browser,*/ page: pageOnUbersuggest } = await this.getPageOnUbersuggest();
+    await pageOnUbersuggest.screenshot({
+      path: '/Users/sandordeli/Projects/keyword-research-tool/src/assets/ubersugg1.png',
+    });
   }
 
   async getPageOnUbersuggest(): Promise<{
@@ -31,16 +33,30 @@ export class UbersuggestService {
     });
 
     let page: Page = await browser.newPage();
-
+    // page = await this.killUbersuggestCaptcha(page);
     page = await this.puppeteerUtils.preparePageForDetection(page);
     await page.goto(url);
-
-    const isDetectableObj = await this.puppeteerUtils.isPageDetectable(page);
-    console.log(isDetectableObj);
-
+    // const isDetectableObj = await this.puppeteerUtils.isPageDetectable(page);
+    // console.log(isDetectableObj);
     return {
       browser,
       page,
     };
+  }
+
+  async killUbersuggestCaptcha(page: Page) {
+    await page.setRequestInterception(true);
+    page.on('request', interceptedRequest => {
+      console.log(interceptedRequest.url());
+      const requestCausesCaptcha = interceptedRequest.url().includes('captcha');
+      if (requestCausesCaptcha) {
+        console.log(interceptedRequest.url());
+        interceptedRequest.abort();
+      } else {
+        interceptedRequest.continue();
+      }
+    });
+
+    return page;
   }
 }

@@ -30,13 +30,13 @@ export class KeywordAnalizerController {
   `;
   }
 
-  @Get('suggestions/:keyword/:deepness')
+  @Get('suggestions/:keyword')
   getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
     this.kywIoService.getSuggestionsForOne(keyword);
   }
 
-  @Get('analitics/:keyword/:deepness')
+  @Get('analitics/:keyword')
   getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
-    this.ubersuggestService.getAnaliticsForOne(keyword);
+    this.ubersuggestService.getAnaliticsForOne();
   }
 }
