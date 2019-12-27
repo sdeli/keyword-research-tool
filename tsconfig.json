@@ -16,7 +16,9 @@
       "@keyword-analizer/*": ["src/controllers/keyword-analizer/*"],
       "@utils/*": ["src/shared/utils/*"],
       "@assets/*": ["src/assets/*"],
-      "@config": ["src/config/index"]
+      "@config": ["src/config/index"],
+      "@shared/*": ["src/shared/*"],
+      "@puppeteer-utils/*": ["src/shared/puppeteer-utils/*"]
     }
   },
   "exclude": ["node_modules", "dist"],

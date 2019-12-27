@@ -1,10 +1,10 @@
 import * as puppeteer from 'puppeteer';
 import { Page, Browser } from 'puppeteer';
 
-import { PuppeteerUtilsService } from '@utils/puppeteer-utils/pupeteer-utils.service';
 import { Injectable, Inject } from '@nestjs/common';
 import { KeywordIoConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 
 @Injectable()
 export class KeywordIoService {

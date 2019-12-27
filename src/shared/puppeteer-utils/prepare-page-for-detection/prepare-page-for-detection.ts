@@ -1,17 +1,17 @@
 import { UtilsService } from '@utils/utils/utils.service';
 import { Injectable, Inject } from '@nestjs/common';
 import { Page } from 'puppeteer';
-import { UTILS_CONFIG_TOKEN } from '@utils/utils.types';
-import { UtilsConfigI } from '@utils/utils.interfaces';
+import { GlobalConfigI } from '@shared/shared.interfaces';
+import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 
 @Injectable()
 export class PreparePageForDetection {
   constructor(
-    @Inject(UTILS_CONFIG_TOKEN) private readonly config: UtilsConfigI,
+    @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly utils: UtilsService,
   ) {}
   async do(page: Page): Promise<Page> {
-    await page.setUserAgent(this.config.userAgent);
+    await page.setUserAgent(this.globalConfig.userAgent);
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'en-US,en;q=0.9' });
 
     await this.passWebDriverTest(page);
@@ -204,22 +204,22 @@ export class PreparePageForDetection {
       hardwareConcurrency,
     );
   }
-  private async passWebGlTest(page: Page) {
-    // await page.evaluateOnNewDocument(() => {
-    //   const getParameter = WebGLRenderingContext.getParameter;
-    //   WebGLRenderingContext.prototype.getParameter = function(parameter) {
-    //     // UNMASKED_VENDOR_WEBGL
-    //     if (parameter === 37445) {
-    //       return 'Intel Open Source Technology Center';
-    //     }
-    //     // UNMASKED_RENDERER_WEBGL
-    //     if (parameter === 37446) {
-    //       return 'Mesa DRI Intel(R) Ivybridge Mobile ';
-    //     }
-    //     return getParameter(parameter);
-    //   };
-    // });
-  }
+  // private async passWebGlTest(page: Page) {
+  // await page.evaluateOnNewDocument(() => {
+  //   const getParameter = WebGLRenderingContext.getParameter;
+  //   WebGLRenderingContext.prototype.getParameter = function(parameter) {
+  //     // UNMASKED_VENDOR_WEBGL
+  //     if (parameter === 37445) {
+  //       return 'Intel Open Source Technology Center';
+  //     }
+  //     // UNMASKED_RENDERER_WEBGL
+  //     if (parameter === 37446) {
+  //       return 'Mesa DRI Intel(R) Ivybridge Mobile ';
+  //     }
+  //     return getParameter(parameter);
+  //   };
+  // });
+  // }
 
   private getDeviceMemory(): number {
     const deviceMemoryVariations = [4, 8];

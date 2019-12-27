@@ -1,7 +1,7 @@
 {
   "watch": ["dist"],
   "ext": "js,json,yaml",
-  "exec": "node dist/main",
+  "exec": "node --inspect dist/main",
   "events": {
     "start": "npm run warn-check-paths"
   }

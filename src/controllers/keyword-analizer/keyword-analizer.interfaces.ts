@@ -16,6 +16,11 @@ export interface UbersuggestConfigI {
   url: string;
   domain: string;
   headless: boolean;
-  selectors: {};
+  selectors: {
+    keywordResearchPageLoaded: string;
+    researchKeywordInput: string;
+    startKywResBtn: string;
+    keywordsAppearedBox: string;
+  };
   cookies: string[];
 }

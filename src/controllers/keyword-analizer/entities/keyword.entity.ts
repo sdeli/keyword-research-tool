@@ -20,4 +20,7 @@ export class Keyword {
   })
   @JoinTable()
   relatedKeywords: GoogleSerpLinks[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

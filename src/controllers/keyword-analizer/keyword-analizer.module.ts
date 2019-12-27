@@ -1,5 +1,4 @@
 import { UbersuggestService } from './ubersuggest/ubersuggest.service';
-import { UtilsModule } from '@utils/utils.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
@@ -11,12 +10,16 @@ import { Keyword } from './entities/keyword.entity';
 import { MasterKeyword } from './entities/master-keyword.entity';
 import { KeywordAnalizerController } from './keyword-analizer.controller';
 import { KeywordIoService } from './keyword-io/keyword-io.service';
+import { GlobalConfigI } from '@shared/shared.interfaces';
+import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
+import { PuppeteerUtilsModule } from '@puppeteer-utils/puppeteer-utils.module';
 
 const keywordAnalizerConfig: KeywordIoConfigI = config.KeywordIo;
-const UbersuggestConfig: UbersuggestConfigI = config.ubersuggest;
+const ubersuggestConfig: UbersuggestConfigI = config.ubersuggest;
+const globalConfig: GlobalConfigI = config.global;
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Keyword, MasterKeyword, GoogleSerpLinks]), UtilsModule],
+  imports: [TypeOrmModule.forFeature([Keyword, MasterKeyword, GoogleSerpLinks]), PuppeteerUtilsModule],
   controllers: [KeywordAnalizerController],
   providers: [
     KeywordIoService,
@@ -27,7 +30,11 @@ const UbersuggestConfig: UbersuggestConfigI = config.ubersuggest;
     },
     {
       provide: UBERSUGGEST_CONFIG_TOKEN,
-      useValue: UbersuggestConfig,
+      useValue: ubersuggestConfig,
+    },
+    {
+      provide: GLOBAL_CONFIG_TOKEN,
+      useValue: globalConfig,
     },
   ],
 })

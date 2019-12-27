@@ -9,15 +9,12 @@ export class MasterKeyword {
   @Column('varchar')
   keyword: string;
 
-  @Column()
-  dateOfanalitics: Date;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
   @ManyToMany(() => Keyword, {
     cascade: true,
   })
   @JoinTable()
   relatedKeywords: Keyword[];
+
+  @CreateDateColumn()
+  createdAt: Date;
 }

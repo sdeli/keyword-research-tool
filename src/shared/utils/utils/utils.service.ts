@@ -14,6 +14,15 @@ export class UtilsService {
     });
   }
 
+  wait(delay: number): Promise<void> {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        console.log('waited: ' + delay);
+        resolve();
+      }, delay);
+    });
+  }
+
   getNumberBetween(max: number, min: number) {
     return Math.floor(Math.random() * (max - min) + min);
   }

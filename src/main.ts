@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
-const err = dotenv.config({ path: '/Users/sandordeli/Projects/keyword-research-tool/.env' });
+const err = dotenv.config({ path: '/home/sandor/Projects/keyword-research-tool/.env' });
+console.log(err);
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
