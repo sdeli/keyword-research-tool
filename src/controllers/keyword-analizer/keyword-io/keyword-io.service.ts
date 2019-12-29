@@ -14,45 +14,48 @@ export class KeywordIoService {
   ) {}
 
   async getSuggestionsForOne(keyword: string) {
-    console.log('here');
-    const { /*browser,*/ page: pageOnKwIo } = await this.getPageOnKywdIo();
-    await pageOnKwIo.screenshot({ path: '/home/sandor/Projects/keyword-research-tool/src/assets/kywio1.png' });
-    console.log('here');
+    const { browser, page: pageOnKwIo, sessionId } = await this.getPageOnKywdIo();
 
     await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
-    await pageOnKwIo.screenshot({ path: '/home/sandor/Projects/keyword-research-tool/src/assets/kywio2.png' });
-    console.log('here');
-
     await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo);
-    await pageOnKwIo.screenshot({ path: '/home/sandor/Projects/keyword-research-tool/src/assets/kywio3.png' });
-    console.log('here');
+    await this.puppeteerUtils.saveSession({
+      page: pageOnKwIo,
+      domain: this.config.domain,
+      sessionId,
+    });
 
-    // await browser.close();
+    await browser.close();
   }
 
   async getPageOnKywdIo(): Promise<{
     browser: Browser;
     page: Page;
+    sessionId?: number;
   }> {
-    const { url, headless } = this.config;
+    let sessionId = 1;
+    const { url, domain, headless } = this.config;
 
     const browser: Browser = await puppeteer.launch({
       headless,
-      args: ['--profile-directory="/Users/sandordeli/Documents"', '--no-sandbox'],
-      userDataDir: '/home/sandor/Projects/keyword-research-tool/src/assets/user-data',
+      // args: ['--user-data-dir="/home/sandor/Projects/keyword-research-tool/src/assets/user-data"', '--no-sandbox'],
+      // userDataDir: '/home/sandor/Projects/keyword-research-tool/src/assets/user-data',
     });
 
     let page: Page = await browser.newPage();
-
     page = await this.puppeteerUtils.preparePageForDetection(page);
-    await page.goto(url);
 
-    const isDetectableObj = await this.puppeteerUtils.isPageDetectable(page);
-    console.log(isDetectableObj);
+    const freeSession = await this.puppeteerUtils.getFreeSession(domain, false);
+    if (freeSession) {
+      sessionId = freeSession.id;
+      page = await this.puppeteerUtils.loadSessionIntoPage(page, freeSession);
+    }
+
+    await page.goto(url);
 
     return {
       browser,
       page,
+      sessionId,
     };
   }
 

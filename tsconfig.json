@@ -12,6 +12,7 @@
     "incremental": true,
     "inlineSourceMap": true,
     "preserveSymlinks": true,
+      "esModuleInterop": true,
     "paths": {
       "@keyword-analizer/*": ["src/controllers/keyword-analizer/*"],
       "@utils/*": ["src/shared/utils/*"],

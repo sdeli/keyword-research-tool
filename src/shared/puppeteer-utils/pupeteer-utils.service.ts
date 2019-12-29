@@ -1,23 +1,42 @@
+import { Not } from 'typeorm';
+
 import { UtilsService } from '@utils/utils/utils.service';
 import { StorageTypes } from '@utils/utils.types';
 import { Page } from 'puppeteer';
-import { Repository, UpdateResult } from 'typeorm';
+import { Repository } from 'typeorm';
 
 import { PreparePageForDetection } from './prepare-page-for-detection/prepare-page-for-detection';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Session } from '@puppeteer-utils/entities/session.entity';
+import { SessionUser } from '@puppeteer-utils/entities/session-user.entity';
+import { BrowserSessionI } from '@puppeteer-utils/pupeteer-utils.interfaces';
+
+interface SaveSessionParamsI {
+  page: Page;
+  domain: string;
+  sessionId?: number;
+}
 
 @Injectable()
 export class PuppeteerUtilsService {
   constructor(
     @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
+    @InjectRepository(SessionUser) private readonly sessionUserRepo: Repository<SessionUser>,
     private readonly prepare: PreparePageForDetection,
-    private readonly utils: UtilsService,
   ) {}
 
   preparePageForDetection(page: Page) {
     return this.prepare.do(page);
+  }
+
+  async clearInputFieldAndType(page: Page, inputFieldSel: string, text: string): Promise<void> {
+    await page.evaluate(inputFieldSel => {
+      // @ts-ignore
+      document.querySelector(inputFieldSel).value = '';
+    }, inputFieldSel);
+
+    await page.type(inputFieldSel, text);
   }
 
   isPageDetectable(page: Page): Promise<any> {
@@ -47,158 +66,137 @@ export class PuppeteerUtilsService {
     });
   }
 
-  async saveCookies(page: Page, sessionUserEmail: string): Promise<UpdateResult> {
-    const cookies = await page.cookies();
-    const cookiesJson = JSON.stringify(cookies);
-
-    return this.sessionRepo
-      .createQueryBuilder()
-      .update()
-      .set({ cookies: cookiesJson })
-      .where('email = :email', { email: sessionUserEmail })
-      .execute();
-    // return this.utils.saveIntoFile(cookiesFilePath, cookiesJson, 'cookies');
-  }
-
   async solveCaptchas(page: Page): Promise<void> {
-    let isCaptchaSolved = false;
+    console.log('solving captchas');
     const { error } = await page.solveRecaptchas();
     if (error) throw error;
-
-    const frames = page.mainFrame().childFrames();
-
-    for (const frame of frames) {
-      const { error } = await frame.solveRecaptchas();
-      if (error) throw error;
-    }
-
-    while (!isCaptchaSolved) {
-      isCaptchaSolved = await this.hasCaptchasOnPage(page);
-      await this.utils.wait(2000);
-      console.log('captcha still not solved');
-    }
-
-    console.log('captcha solved yeeee');
+    console.log('solved captcha');
+    // const frames = page.mainFrame().childFrames();
+    //
+    // for (const frame of frames) {
+    //   console.log('found new captcha => solving');
+    //   const { error } = await frame.solveRecaptchas();
+    //   if (error) throw error;
+    //   console.log('solved captcha');
+    // }
   }
 
   async hasCaptchasOnPage(page: Page) {
     const captchasOnPage = [];
-    const frames = page.mainFrame().childFrames();
+    // const frames = page.mainFrame().childFrames();
 
     const { captchas, error } = await page.findRecaptchas();
     if (error) throw error;
     if (captchas.length > 0) captchasOnPage.push(...captchas);
 
-    for (const frame of frames) {
-      const { captchas, error } = await frame.findRecaptchas();
-      if (error) throw error;
-      if (captchas.length > 0) captchasOnPage.push(...captchas);
-    }
+    // for (const frame of frames) {
+    //   const { captchas, error } = await frame.findRecaptchas();
+    //   if (error) throw error;
+    //   if (captchas.length > 0) captchasOnPage.push(...captchas);
+    // }
 
     return captchasOnPage.length > 0;
   }
 
-  // async loadCookies(page: Page): Promise<Page> {
-  //   const hasCookiesFile = fs.existsSync(cookiesFilePath);
-  //   if (!hasCookiesFile) {
-  //     console.log('there are no cookies file');
-  //     return page;
+  // async loadSessionIntoPage(page: Page, session: Session): Promise<Page> {
+  //   // const cookies = session.cookies;
+  //   const cookies = JSON.parse(session.cookies);
+  //   const sessionStorage = JSON.parse(session.session);
+  //
+  //   for (const cookie of cookies) {
+  //     await page.setCookie(cookie);
   //   }
   //
-  //   const cookiesArr = require(cookiesFilePath);
-  //   if (cookiesArr.length !== 0) {
-  //     for (const cookie of cookiesArr) {
-  //       await page.setCookie(cookie);
-  //     }
-  //
-  //     console.log('Cookies have been loaded into the page');
-  //   }
+  //   // this.loadSessionStorageIntoPage(page, sessionStorage);
+  //   console.log('cookies and session have been loaded into the page');
   //
   //   return page;
   // }
-
-  // async saveLocalStorage(page: Page): Promise<void> {
-  //   const localStorageJSON = await this.getStorageFromPage(page, StorageTypes.LOCAL);
-  //   console.log('localStorageJSON:');
-  //   console.log(localStorageJSON);
   //
-  //   return this.utils.saveIntoFile(localStorageFilePath, localStorageJSON, 'local storage');
-  // }
-
-  // async loadLocalStorage(page: Page): Promise<Page> {
-  //   const hasLocalStorageFile = fs.existsSync(localStorageFilePath);
-  //   if (!hasLocalStorageFile) {
-  //     console.log('there are no local storage from prev session');
-  //     return page;
+  // async saveSession(saveSessionParams: SaveSessionParamsI): Promise<void> {
+  //   const { page, domain, sessionId } = saveSessionParams;
+  //   const sessionStorage = await this.getStorageFromPage(page, StorageTypes.SESSION);
+  //   const cookies = await page.cookies();
+  //
+  //   if (!sessionId) {
+  //     const session = await this.createSessionEntity(cookies, sessionStorage, domain);
+  //     session.inUse = false;
+  //     await this.sessionRepo.save(session);
+  //     return;
   //   }
   //
-  //   const localStorage = require(localStorageFilePath);
-  //   console.log(localStorage);
-  //   await page.evaluate(localStorageObj => {
-  //     for (const localStorageKey in localStorageObj) {
-  //       if (localStorageObj.hasOwnProperty(localStorageKey)) {
-  //         const currLocalStorageValue = localStorageObj[localStorageKey];
-  //         console.log(`${localStorageKey}: ${currLocalStorageValue}`);
-  //         localStorage.setItem(localStorageKey, currLocalStorageValue);
-  //       }
-  //     }
-  //   }, localStorage);
+  //   await this.sessionRepo.update(
+  //     { id: sessionId },
+  //     {
+  //       cookies: JSON.stringify(cookies),
+  //       session: JSON.stringify(sessionStorage),
+  //       inUse: false,
+  //     },
+  //   );
+  // }
   //
-  //   return page;
+  // private async createSessionEntity(
+  //   cookies: BrowserSessionI,
+  //   sessionStorage: BrowserSessionI,
+  //   domain: string,
+  // ): Promise<Session> {
+  //   const session = new Session();
+  //   session.cookies = JSON.stringify(cookies);
+  //   session.session = JSON.stringify(sessionStorage);
+  //   session.domain = domain;
+  //
+  //   return session;
+  // }
+  //
+  // async getFreeSession(domain: string, withUser: boolean): Promise<Session> {
+  //   const freeSessionFindOptions = {
+  //     where: {
+  //       inUse: false,
+  //       domain,
+  //       sessionUserId: withUser ? Not(null) : undefined,
+  //     },
+  //     relations: ['sessionUser'],
+  //   };
+  //
+  //   const freeSession = await this.sessionRepo.findOne(freeSessionFindOptions);
+  //   if (freeSession) {
+  //     freeSession.inUse = true;
+  //     await this.sessionRepo.save(freeSession);
+  //   }
+  //
+  //   return freeSession;
   // }
 
-  async saveSessionStorage(page: Page, sessionUserEmail): Promise<UpdateResult> {
-    const sessionStorageJSON = await this.getStorageFromPage(page, StorageTypes.SESSION);
-
-    return this.sessionRepo
-      .createQueryBuilder()
-      .update()
-      .set({ session: sessionStorageJSON })
-      .where('email = :email', { email: sessionUserEmail })
-      .execute();
+  async makeScreenshot(page: Page): Promise<void> {
+    const now = new Date();
+    await page.screenshot({ path: `/home/sandor/Projects/keyword-research-tool/src/assets/${now}.png` });
   }
 
-  // async loadSessionStorage(page: Page): Promise<Page> {
+  // private async getStorageFromPage(page: Page, storageType: StorageTypes): Promise<object> {
+  //   return await page.evaluate(storageTypeStr => {
+  //     const storage = window[storageTypeStr];
+  //     const storageObj = {};
   //
-  //   if (!hasSessionStorage) {
-  //     console.log('there is no local session storage from prev session');
-  //     return page;
-  //   }
+  //     for (let i = 0; i < window[storageTypeStr].length; i++) {
+  //       const key = (storage as any).key(i);
+  //       storageObj[key] = (storage as any).getItem(key);
+  //     }
   //
-  //   const sessionStorage = require(sessionFilePath);
-  //
-  //   await page.evaluate(sessionStorageObj => {
-  //     for (const sessionStorageKey in sessionStorageObj) {
-  //       if (sessionStorageObj.hasOwnProperty(sessionStorageKey)) {
-  //         const currSessionStorageValue = sessionStorageObj[sessionStorageKey];
+  //     return storageObj;
+  //   }, storageType);
+  // }
+
+  // private loadSessionStorageIntoPage(page: Page, sessionStorage: BrowserSessionI): Promise<void> {
+  //   return page.evaluate(sessionStorage => {
+  //     for (const sessionStorageKey in sessionStorage) {
+  //       if (sessionStorage.hasOwnProperty(sessionStorageKey)) {
+  //         const currSessionStorageValue = sessionStorage[sessionStorageKey];
   //         console.log(`${sessionStorageKey}: ${currSessionStorageValue}`);
   //         sessionStorage.setItem(sessionStorageKey, currSessionStorageValue);
   //       }
   //     }
   //   }, sessionStorage);
-  //
-  //   return page;
   // }
-
-  // saveSessions(page: Page): Promise<void[]> {
-  //   const saveSessionsPromises = [this.saveCookies(page), this.saveLocalStorage(page), this.saveSessionStorage(page)];
-  //
-  //   return Promise.all(saveSessionsPromises);
-  // }
-
-  private async getStorageFromPage(page: Page, storageType: StorageTypes): Promise<string> {
-    return await page.evaluate(storageTypeStr => {
-      const storage = window[storageTypeStr];
-      const storageObj = {};
-
-      for (let i = 0; i < window[storageTypeStr].length; i++) {
-        const key = (storage as any).key(i);
-        storageObj[key] = (storage as any).getItem(key);
-      }
-
-      return JSON.stringify(storageObj, null, 2);
-    }, storageType);
-  }
 }
 
 // var storage = window['sessionStorage'];

@@ -37,6 +37,6 @@ export class KeywordAnalizerController {
 
   @Get('analitics/:keyword')
   getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
-    this.ubersuggestService.getAnaliticsForOne();
+    this.ubersuggestService.getAnaliticsForOne(keyword);
   }
 }

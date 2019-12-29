@@ -1,8 +1,7 @@
 const { CAPTCHA_2D_TOKEN } = process.env;
 // console.log(process.env);
-console.log(CAPTCHA_2D_TOKEN);
 const globalConfigs = {
-  headless: false,
+  headless: true,
   captcha2dToken: CAPTCHA_2D_TOKEN,
   captcha2dId: '2captcha',
   userAgent:
@@ -30,10 +29,10 @@ const localModulConfigurations = {
     url: 'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword=gyerek%20játékok&locId=2348&lang=hu',
     domain: 'https://app.neilpatel.com',
     selectors: {
-      keywordResearchPageLoaded: '[alt="Logo"]',
       researchKeywordInput: '[placeholder="Enter in a keyword or domain"]',
-      startKywResBtn: '#edit-submit--4',
-      keywordsAppearedBox: '#search-1-wrapper .pro-upsell-table',
+      loginWithGoogleBtnSel: '[data-for="register-tooltip"]',
+      loggedInImgSel: 'img[alt="user-pic"]',
+      keywordResearchResAppearedSel: '[data-for="tooltip-kidea-0"]',
     },
     cookies: [],
   },

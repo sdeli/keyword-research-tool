@@ -13,13 +13,14 @@ import { KeywordIoService } from './keyword-io/keyword-io.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { PuppeteerUtilsModule } from '@puppeteer-utils/puppeteer-utils.module';
+import { UtilsModule } from '@shared/utils';
 
 const keywordAnalizerConfig: KeywordIoConfigI = config.KeywordIo;
 const ubersuggestConfig: UbersuggestConfigI = config.ubersuggest;
 const globalConfig: GlobalConfigI = config.global;
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Keyword, MasterKeyword, GoogleSerpLinks]), PuppeteerUtilsModule],
+  imports: [TypeOrmModule.forFeature([Keyword, MasterKeyword, GoogleSerpLinks]), PuppeteerUtilsModule, UtilsModule],
   controllers: [KeywordAnalizerController],
   providers: [
     KeywordIoService,

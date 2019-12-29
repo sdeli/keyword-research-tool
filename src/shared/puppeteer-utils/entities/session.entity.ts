@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { SessionUser } from '@puppeteer-utils/entities/session-user.entity';
 
 @Entity()
@@ -6,23 +6,30 @@ export class Session {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column('varchar')
+  domain: string;
+
   @Column({
     nullable: true,
-    type: 'simple-json',
+    type: 'json',
   })
   cookies: string;
 
   @Column({
     nullable: true,
-    type: 'simple-json',
+    type: 'json',
   })
   session: string;
 
+  @Column({ default: false, nullable: false, type: 'boolean' })
+  inUse: boolean;
+
   @ManyToOne(
-    () => SessionUser,
-    sessionUser => sessionUser.id,
-    { nullable: false },
+    type => SessionUser,
+    sessionUser => sessionUser.sessions,
+    { nullable: true },
   )
+  @JoinColumn()
   sessionUser: SessionUser;
 
   @CreateDateColumn()

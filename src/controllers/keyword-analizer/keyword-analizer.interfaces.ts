@@ -17,10 +17,11 @@ export interface UbersuggestConfigI {
   domain: string;
   headless: boolean;
   selectors: {
-    keywordResearchPageLoaded: string;
     researchKeywordInput: string;
-    startKywResBtn: string;
-    keywordsAppearedBox: string;
+    startKywResearchBtn: string;
+    keywordResearchResAppearedSel: string;
+    loginWithGoogleBtnSel: string;
+    loggedInImgSel: string;
   };
   cookies: string[];
 }
