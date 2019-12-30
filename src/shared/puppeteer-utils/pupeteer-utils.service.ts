@@ -1,21 +1,29 @@
-import { Not } from 'typeorm';
-
 import { UtilsService } from '@utils/utils/utils.service';
-import { StorageTypes } from '@utils/utils.types';
-import { Page } from 'puppeteer';
 import { Repository } from 'typeorm';
+import { Browser, Page } from 'puppeteer';
+
+import puppeteerExtra from 'puppeteer-extra';
+import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha-2';
+// tslint:disable-next-line:no-var-requires
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 import { PreparePageForDetection } from './prepare-page-for-detection/prepare-page-for-detection';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Session } from '@puppeteer-utils/entities/session.entity';
 import { SessionUser } from '@puppeteer-utils/entities/session-user.entity';
-import { BrowserSessionI } from '@puppeteer-utils/pupeteer-utils.interfaces';
+import { GlobalConfigI } from '@shared/shared.interfaces';
+import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 
-interface SaveSessionParamsI {
+interface BrowserDataI {
+  browser: Browser;
   page: Page;
-  domain: string;
-  sessionId?: number;
+}
+
+interface PageOptsI {
+  headless: boolean;
+  userDataDir: string;
+  downloadPath: string;
 }
 
 @Injectable()
@@ -23,20 +31,76 @@ export class PuppeteerUtilsService {
   constructor(
     @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
     @InjectRepository(SessionUser) private readonly sessionUserRepo: Repository<SessionUser>,
+    @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly prepare: PreparePageForDetection,
+    private readonly utils: UtilsService,
   ) {}
 
   preparePageForDetection(page: Page) {
     return this.prepare.do(page);
   }
 
-  async clearInputFieldAndType(page: Page, inputFieldSel: string, text: string): Promise<void> {
-    await page.evaluate(inputFieldSel => {
-      // @ts-ignore
-      document.querySelector(inputFieldSel).value = '';
-    }, inputFieldSel);
+  async getAntiCaptchaBrowser(pageOpts: PageOptsI): Promise<BrowserDataI> {
+    const { headless, userDataDir, downloadPath } = pageOpts;
+    const { captcha2dToken, captcha2dId } = this.globalConfig;
 
-    await page.type(inputFieldSel, text);
+    puppeteerExtra.use(StealthPlugin());
+    puppeteerExtra.use(
+      RecaptchaPlugin({
+        provider: {
+          id: captcha2dId,
+          token: captcha2dToken,
+        },
+        visualFeedback: true,
+      }),
+    );
+
+    const pupeteerExtraOpts = {
+      headless,
+      slowMo: 10,
+      userDataDir,
+      executablePath: '/usr/bin/google-chrome-stable',
+    };
+
+    const browser = await puppeteerExtra.launch(pupeteerExtraOpts);
+    const page = await browser.newPage();
+
+    const client = await page.target().createCDPSession();
+    await client.send('Page.setDownloadBehavior', {
+      behavior: 'allow',
+      downloadPath,
+    });
+
+    return { browser, page };
+  }
+
+  async tryClearInputFieldAndType(page: Page, inputFieldSel: string, text: string): Promise<boolean> {
+    let succesfullyWroteIntoInputField = false;
+    let tryCount = 0;
+
+    do {
+      console.log('trying to type: ' + text);
+      await page.evaluate(inputFieldSel => {
+        document.querySelector(inputFieldSel).value = '';
+      }, inputFieldSel);
+      await page.type(inputFieldSel, text);
+
+      const inputsValue = await this.getInputFieldsValue(page, inputFieldSel);
+      if (inputsValue === text) succesfullyWroteIntoInputField = true;
+      else {
+        tryCount++;
+        await this.utils.wait(1000);
+      }
+    } while (!succesfullyWroteIntoInputField && tryCount < 15);
+
+    return succesfullyWroteIntoInputField;
+  }
+
+  async getInputFieldsValue(page: Page, inputFieldSel: string) {
+    return await page.evaluate(inputFieldSel => {
+      console.log(document.querySelector(inputFieldSel).value);
+      return document.querySelector(inputFieldSel).value;
+    }, inputFieldSel);
   }
 
   isPageDetectable(page: Page): Promise<any> {
@@ -71,132 +135,22 @@ export class PuppeteerUtilsService {
     const { error } = await page.solveRecaptchas();
     if (error) throw error;
     console.log('solved captcha');
-    // const frames = page.mainFrame().childFrames();
-    //
-    // for (const frame of frames) {
-    //   console.log('found new captcha => solving');
-    //   const { error } = await frame.solveRecaptchas();
-    //   if (error) throw error;
-    //   console.log('solved captcha');
-    // }
   }
 
   async hasCaptchasOnPage(page: Page) {
     const captchasOnPage = [];
-    // const frames = page.mainFrame().childFrames();
 
     const { captchas, error } = await page.findRecaptchas();
     if (error) throw error;
     if (captchas.length > 0) captchasOnPage.push(...captchas);
 
-    // for (const frame of frames) {
-    //   const { captchas, error } = await frame.findRecaptchas();
-    //   if (error) throw error;
-    //   if (captchas.length > 0) captchasOnPage.push(...captchas);
-    // }
-
     return captchasOnPage.length > 0;
   }
 
-  // async loadSessionIntoPage(page: Page, session: Session): Promise<Page> {
-  //   // const cookies = session.cookies;
-  //   const cookies = JSON.parse(session.cookies);
-  //   const sessionStorage = JSON.parse(session.session);
-  //
-  //   for (const cookie of cookies) {
-  //     await page.setCookie(cookie);
-  //   }
-  //
-  //   // this.loadSessionStorageIntoPage(page, sessionStorage);
-  //   console.log('cookies and session have been loaded into the page');
-  //
-  //   return page;
-  // }
-  //
-  // async saveSession(saveSessionParams: SaveSessionParamsI): Promise<void> {
-  //   const { page, domain, sessionId } = saveSessionParams;
-  //   const sessionStorage = await this.getStorageFromPage(page, StorageTypes.SESSION);
-  //   const cookies = await page.cookies();
-  //
-  //   if (!sessionId) {
-  //     const session = await this.createSessionEntity(cookies, sessionStorage, domain);
-  //     session.inUse = false;
-  //     await this.sessionRepo.save(session);
-  //     return;
-  //   }
-  //
-  //   await this.sessionRepo.update(
-  //     { id: sessionId },
-  //     {
-  //       cookies: JSON.stringify(cookies),
-  //       session: JSON.stringify(sessionStorage),
-  //       inUse: false,
-  //     },
-  //   );
-  // }
-  //
-  // private async createSessionEntity(
-  //   cookies: BrowserSessionI,
-  //   sessionStorage: BrowserSessionI,
-  //   domain: string,
-  // ): Promise<Session> {
-  //   const session = new Session();
-  //   session.cookies = JSON.stringify(cookies);
-  //   session.session = JSON.stringify(sessionStorage);
-  //   session.domain = domain;
-  //
-  //   return session;
-  // }
-  //
-  // async getFreeSession(domain: string, withUser: boolean): Promise<Session> {
-  //   const freeSessionFindOptions = {
-  //     where: {
-  //       inUse: false,
-  //       domain,
-  //       sessionUserId: withUser ? Not(null) : undefined,
-  //     },
-  //     relations: ['sessionUser'],
-  //   };
-  //
-  //   const freeSession = await this.sessionRepo.findOne(freeSessionFindOptions);
-  //   if (freeSession) {
-  //     freeSession.inUse = true;
-  //     await this.sessionRepo.save(freeSession);
-  //   }
-  //
-  //   return freeSession;
-  // }
-
-  async makeScreenshot(page: Page): Promise<void> {
+  async makeScreenshot(page: Page, phrase: string): Promise<void> {
     const now = new Date();
-    await page.screenshot({ path: `/home/sandor/Projects/keyword-research-tool/src/assets/${now}.png` });
+    await page.screenshot({ path: `/home/sandor/Projects/keyword-research-tool/src/assets/${phrase}-${now}.png` });
   }
-
-  // private async getStorageFromPage(page: Page, storageType: StorageTypes): Promise<object> {
-  //   return await page.evaluate(storageTypeStr => {
-  //     const storage = window[storageTypeStr];
-  //     const storageObj = {};
-  //
-  //     for (let i = 0; i < window[storageTypeStr].length; i++) {
-  //       const key = (storage as any).key(i);
-  //       storageObj[key] = (storage as any).getItem(key);
-  //     }
-  //
-  //     return storageObj;
-  //   }, storageType);
-  // }
-
-  // private loadSessionStorageIntoPage(page: Page, sessionStorage: BrowserSessionI): Promise<void> {
-  //   return page.evaluate(sessionStorage => {
-  //     for (const sessionStorageKey in sessionStorage) {
-  //       if (sessionStorage.hasOwnProperty(sessionStorageKey)) {
-  //         const currSessionStorageValue = sessionStorage[sessionStorageKey];
-  //         console.log(`${sessionStorageKey}: ${currSessionStorageValue}`);
-  //         sessionStorage.setItem(sessionStorageKey, currSessionStorageValue);
-  //       }
-  //     }
-  //   }, sessionStorage);
-  // }
 }
 
 // var storage = window['sessionStorage'];

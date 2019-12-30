@@ -3,11 +3,6 @@ import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interface
 import { Injectable, Inject } from '@nestjs/common';
 import { Browser, Page } from 'puppeteer';
 
-import puppeteerExtra from 'puppeteer-extra';
-import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha-2';
-// tslint:disable-next-line:no-var-requires
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
 import { UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
@@ -25,49 +20,41 @@ export class UbersuggestService {
 
   async getAnaliticsForOne(keyword: string) {
     console.log('getting analitcs for: ' + keyword);
+    const { researchKeywordInput } = this.config.selectors;
+    let hasLoadedCorrectData = false;
+    let tryCounter = 0;
+
     const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
     let pageOnUbersuggest = antiCaptchaPage.page;
-    // const { browser } = antiCaptchaPage;
-
     pageOnUbersuggest = await this.getScrapablePage(pageOnUbersuggest);
 
-    await this.searchForKeywordOnPage(pageOnUbersuggest, keyword);
-    await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest);
+    do {
+      await this.searchForKeywordOnPage(pageOnUbersuggest, keyword);
+      // researchKywInputsValue if equals to the actual keyword then it indicates that the search has happened
+      // to the correct keyword and no to an other one... the page tricks with other keywords sometimes
+      const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
+        pageOnUbersuggest,
+        researchKeywordInput,
+      );
 
-    // await pageOnUbersuggest.waitFor(5000);
+      console.log('data load was succesful ' + (researchKywInputsValue === keyword));
+      if (researchKywInputsValue === keyword) hasLoadedCorrectData = true;
+      else {
+        tryCounter++;
+      }
+    } while (!hasLoadedCorrectData && tryCounter < 4);
+
+    await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'searched');
+
     await this.triggerKeywCsvDownload(pageOnUbersuggest);
     console.log(11);
-    // browser.close();
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
     const { url, headless } = this.config;
-    const { captcha2dToken, captcha2dId } = this.globalConfig;
-
-    puppeteerExtra.use(StealthPlugin());
-    puppeteerExtra.use(
-      RecaptchaPlugin({
-        provider: {
-          id: captcha2dId,
-          token: captcha2dToken,
-        },
-        visualFeedback: true,
-      }),
-    );
-
-    const pupeteerExtraOpts = {
+    const { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
       headless,
-      slowMo: 10,
       userDataDir: '/home/sandor/Projects/keyword-research-tool/src/assets/user-data',
-      executablePath: '/usr/bin/google-chrome-stable',
-    };
-
-    const browser = await puppeteerExtra.launch(pupeteerExtraOpts);
-    const page = await browser.newPage();
-
-    const client = await page.target().createCDPSession();
-    await client.send('Page.setDownloadBehavior', {
-      behavior: 'allow',
       downloadPath: '/home/sandor/Projects/keyword-research-tool/src/assets',
     });
 
@@ -81,24 +68,33 @@ export class UbersuggestService {
 
   private async getScrapablePage(pageOnUbersuggest: Page): Promise<Page> {
     console.log('getting scrapable page');
-    const { loggedInImgSel } = this.config.selectors;
-    const isLoggedInElem = await pageOnUbersuggest.$(loggedInImgSel);
 
-    console.log('is logged in: ' + Boolean(isLoggedInElem));
-    if (!isLoggedInElem) {
+    const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
+    console.log('is logged in: ' + isLoggedIn);
+    if (!isLoggedIn) {
       const couldLogIn = await this.tryToLogIn(pageOnUbersuggest);
-      if (!couldLogIn) throw Error('could not log into ubersuggest');
+      if (!couldLogIn) throw new Error('could not log into ubersuggest');
     }
 
-    await pageOnUbersuggest.waitFor(3000);
+    await pageOnUbersuggest.waitFor(2000);
 
     const hasCaptchaOnPage = await this.puppeteerUtils.hasCaptchasOnPage(pageOnUbersuggest);
-    console.log('has captcha on page' + hasCaptchaOnPage);
+    console.log('has captcha on page ' + hasCaptchaOnPage);
     if (hasCaptchaOnPage) {
       await this.puppeteerUtils.solveCaptchas(pageOnUbersuggest);
+      await this.utils.wait(3000);
     }
 
     return pageOnUbersuggest;
+  }
+
+  private async isLoggedInToUbersuggest(pageOnUbersuggest: Page): Promise<boolean> {
+    const { loggedInImgSel, loginWithGoogleBtnSel } = this.config.selectors;
+
+    const loggedInImageElemHandle = await pageOnUbersuggest.$(loggedInImgSel);
+    const loginWithGoogleElemHandle = await pageOnUbersuggest.$(loginWithGoogleBtnSel);
+
+    return loggedInImageElemHandle && !loginWithGoogleElemHandle;
   }
 
   private async tryToLogIn(pageOnUbersuggest): Promise<boolean> {
@@ -124,16 +120,56 @@ export class UbersuggestService {
 
   private async searchForKeywordOnPage(pageOnUbersuggest: Page, keyword: string): Promise<void> {
     console.log('searching for keyword');
-    const { researchKeywordInput, keywordResearchResAppearedSel } = this.config.selectors;
-    await this.puppeteerUtils.clearInputFieldAndType(pageOnUbersuggest, researchKeywordInput, keyword);
-    await this.utils.waitBetween(200, 1000);
+    const { keywordResearchResAppearedSel } = this.config.selectors;
+    await this.setKeywResearchInputsValue(pageOnUbersuggest, keyword);
+    await this.utils.waitBetween(900, 1500);
+    await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'typed');
     await this.clickStartKeywordResearchBtn(pageOnUbersuggest);
     await pageOnUbersuggest.waitForSelector(keywordResearchResAppearedSel);
   }
 
+  private async setKeywResearchInputsValue(pageOnUbersuggest: Page, keyword: string): Promise<void> {
+    const { researchKeywordInput } = this.config.selectors;
+    let succesFullyWroteIntoInputField = false;
+    let tryCounter = 0;
+
+    // I know this for loop and then the while one are ugly like fuck... but they have made the job done.
+    for (let i = 0; i < 3; i++) {
+      console.log('for');
+      const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
+        pageOnUbersuggest,
+        researchKeywordInput,
+      );
+
+      console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
+      if (researchKywInputsValue !== keyword) {
+        await this.puppeteerUtils.tryClearInputFieldAndType(pageOnUbersuggest, researchKeywordInput, keyword);
+      }
+    }
+
+    do {
+      console.log('while');
+      const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
+        pageOnUbersuggest,
+        researchKeywordInput,
+      );
+
+      console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
+      if (researchKywInputsValue === keyword) succesFullyWroteIntoInputField = true;
+      else {
+        tryCounter++;
+        succesFullyWroteIntoInputField = false;
+        await this.utils.waitBetween(1500, 2000);
+        await this.puppeteerUtils.tryClearInputFieldAndType(pageOnUbersuggest, researchKeywordInput, keyword);
+      }
+    } while (!succesFullyWroteIntoInputField && tryCounter < 15);
+
+    if (!succesFullyWroteIntoInputField) throw new Error('couldnt write into input field');
+    else console.log('while loop has allowed to click on kyw research btn');
+  }
+
   private async clickStartKeywordResearchBtn(pageOnUbersuggest: Page) {
     console.log('clickint start btn');
-    this.puppeteerUtils.makeScreenshot(pageOnUbersuggest);
     const allButtonHandles = await pageOnUbersuggest.$$('button');
     let startKeywordResBtn;
 
