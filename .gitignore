@@ -5,7 +5,7 @@
 src/assets/*
 
 test/*
-!**/.gitkeep
+!/**/.gitkeep
 
 .env
 
