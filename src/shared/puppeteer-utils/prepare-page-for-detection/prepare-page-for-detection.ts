@@ -1,4 +1,4 @@
-import { UtilsService } from '@utils/utils/utils.service';
+import { UtilsService } from '@utils/utils.service';
 import { Injectable, Inject } from '@nestjs/common';
 import { Page } from 'puppeteer';
 import { GlobalConfigI } from '@shared/shared.interfaces';

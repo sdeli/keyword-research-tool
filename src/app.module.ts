@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppService } from './app.service';
 import { UtilsModule } from '@utils/utils.module';
-import { UtilsService } from '@utils/utils/utils.service';
+import { UtilsService } from '@utils/utils.service';
 import { PuppeteerUtilsModule } from './shared/puppeteer-utils/puppeteer-utils.module';
 
 @Module({

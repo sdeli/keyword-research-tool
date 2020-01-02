@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
+import { Injectable } from '@nestjs/common';
 
 @Injectable()
 export class UtilsService {
@@ -37,6 +37,30 @@ export class UtilsService {
 
         resolve();
         console.log(`${contentName} has been successfully saved`);
+      });
+    });
+  }
+
+  async waitToDownloadCsv(folderAbsPath: string, fileNameToWaitFor: string) {
+    console.log(folderAbsPath);
+    console.log(fileNameToWaitFor);
+    return new Promise((resolve, reject) => {
+      const watcher = fs.watch(folderAbsPath);
+
+      watcher.on('change', (eventType, currFilesName) => {
+        console.log(eventType);
+        console.log(currFilesName);
+        const isDownloadFile = currFilesName === fileNameToWaitFor;
+        if (isDownloadFile) {
+          watcher.close();
+          return resolve();
+        }
+      });
+
+      watcher.on('error', error => {
+        console.log(error);
+        watcher.close();
+        reject();
       });
     });
   }

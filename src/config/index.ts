@@ -1,11 +1,13 @@
 const { CAPTCHA_2D_TOKEN } = process.env;
-// console.log(process.env);
+
 const globalConfigs = {
-  headless: true,
+  headless: false,
   captcha2dToken: CAPTCHA_2D_TOKEN,
   captcha2dId: '2captcha',
   userAgent:
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36',
+  downloadsFolder: `${process.cwd()}/src/assets/downloads`,
+  userDataFolder: `${process.cwd()}/src/assests/user-data`,
 };
 
 const localModulConfigurations = {
@@ -17,7 +19,7 @@ const localModulConfigurations = {
     domain: 'https://keywordtool.io/',
     selectors: {
       researchKeywordInput: '#edit-keyword--3',
-      downloadCsvBtn: '#edit-export-csv--4',
+      downloadCsvBtnSel: '#edit-export-csv--4',
       startKywResBtn: '#edit-submit--4',
       keywordsAppearedSel: '#kt-keywords-search-results-form h4.search-results-title',
     },

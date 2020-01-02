@@ -1,4 +1,4 @@
-import { UtilsService } from '@utils/utils/utils.service';
+import { UtilsService } from '@utils/utils.service';
 import { Repository } from 'typeorm';
 import { Browser, Page } from 'puppeteer';
 
@@ -57,9 +57,9 @@ export class PuppeteerUtilsService {
 
     const pupeteerExtraOpts = {
       headless,
-      slowMo: 10,
+      slowMo: 100,
       userDataDir,
-      executablePath: '/usr/bin/google-chrome-stable',
+      // executablePath: '/usr/bin/google-chrome-stable',
     };
 
     const browser = await puppeteerExtra.launch(pupeteerExtraOpts);
@@ -149,7 +149,7 @@ export class PuppeteerUtilsService {
 
   async makeScreenshot(page: Page, phrase: string): Promise<void> {
     const now = new Date();
-    await page.screenshot({ path: `/home/sandor/Projects/keyword-research-tool/src/assets/${phrase}-${now}.png` });
+    await page.screenshot({ path: `${process.cwd()}/src/assets/${phrase}-${now}.png` });
   }
 }
 
