@@ -3,4 +3,6 @@ export interface GlobalConfigI {
   headless: boolean;
   captcha2dToken: string;
   captcha2dId: string;
+  userDataFolder: string;
+  downloadsFolder: string;
 }

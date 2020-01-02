@@ -54,8 +54,8 @@ export class UbersuggestService {
     const { url, headless } = this.config;
     const { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
       headless,
-      userDataDir: '/home/sandor/Projects/keyword-research-tool/src/assets/user-data',
-      downloadPath: '/home/sandor/Projects/keyword-research-tool/src/assets',
+      userDataDir: `${process.cwd()}/src/assets/user-data`,
+      downloadPath: `${process.cwd()}/keyword-research-tool/src/assets`,
     });
 
     await page.goto(url);

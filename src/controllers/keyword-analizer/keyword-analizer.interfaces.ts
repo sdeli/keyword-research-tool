@@ -4,7 +4,7 @@ export interface KeywordIoConfigI {
   headless: boolean;
   selectors: {
     researchKeywordInput: string;
-    downloadCsvBtn: string;
+    downloadCsvBtnSel: string;
     startKywResBtn: string;
     keywordsAppearedSel: string;
   };
