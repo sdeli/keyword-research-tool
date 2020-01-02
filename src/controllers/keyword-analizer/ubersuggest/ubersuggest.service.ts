@@ -52,10 +52,12 @@ export class UbersuggestService {
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
     const { url, headless } = this.config;
+    const { downloadsFolder, userDataFolder } = this.globalConfig;
+
     const { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
       headless,
-      userDataDir: `${process.cwd()}/src/assets/user-data`,
-      downloadPath: `${process.cwd()}/keyword-research-tool/src/assets`,
+      userDataDir: userDataFolder,
+      downloadPath: downloadsFolder,
     });
 
     await page.goto(url);
@@ -186,6 +188,8 @@ export class UbersuggestService {
 
   private triggerKeywCsvDownload(page: Page): Promise<void> {
     console.log('csv download');
+    const { downloadsFolder } = this.globalConfig;
+    // const downloadsFileName = `${}`
     return page.evaluate(() => {
       const buttonNodeList = document.querySelectorAll('button');
       const buttonNodesArr = [].slice.call(buttonNodeList);
@@ -196,5 +200,7 @@ export class UbersuggestService {
 
       exportToCsvButtons[0].click();
     });
+
+    // await this.utils.waitToDownloadCsv(downloadsFolder);
   }
 }
