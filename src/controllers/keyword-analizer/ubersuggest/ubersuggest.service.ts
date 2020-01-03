@@ -20,12 +20,15 @@ export class UbersuggestService {
 
   async getAnaliticsForOne(keyword: string) {
     console.log('getting analitcs for: ' + keyword);
+
     const { researchKeywordInput } = this.config.selectors;
-    let hasLoadedCorrectData = false;
+    let hasPageLoadedCorrectData = false;
     let tryCounter = 0;
 
     const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
     let pageOnUbersuggest = antiCaptchaPage.page;
+    const { browser } = antiCaptchaPage;
+
     pageOnUbersuggest = await this.getScrapablePage(pageOnUbersuggest);
 
     do {
@@ -38,16 +41,20 @@ export class UbersuggestService {
       );
 
       console.log('data load was succesful ' + (researchKywInputsValue === keyword));
-      if (researchKywInputsValue === keyword) hasLoadedCorrectData = true;
+      if (researchKywInputsValue === keyword) hasPageLoadedCorrectData = true;
       else {
         tryCounter++;
       }
-    } while (!hasLoadedCorrectData && tryCounter < 4);
+    } while (!hasPageLoadedCorrectData && tryCounter < 4);
+
+    const pageFailedToLoadCorrectData = !hasPageLoadedCorrectData && tryCounter > 4;
+    if (pageFailedToLoadCorrectData) throw new Error('Page didnt load data, that could be downloaded');
 
     await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'searched');
 
-    await this.triggerKeywCsvDownload(pageOnUbersuggest);
+    await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
     console.log(11);
+    await browser.close();
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
@@ -186,11 +193,12 @@ export class UbersuggestService {
     await startKeywordResBtn.click();
   }
 
-  private triggerKeywCsvDownload(page: Page): Promise<void> {
+  private async downloadKeywAnaliticsCsv(page: Page, keyword: string): Promise<void> {
     console.log('csv download');
     const { downloadsFolder } = this.globalConfig;
-    // const downloadsFileName = `${}`
-    return page.evaluate(() => {
+    const downloadsFileName = `ubersuggest_${keyword}.csv`.replace(' ', '_');
+
+    await page.evaluate(() => {
       const buttonNodeList = document.querySelectorAll('button');
       const buttonNodesArr = [].slice.call(buttonNodeList);
       const exportToCsvButtons = buttonNodesArr.filter(button => {
@@ -200,7 +208,7 @@ export class UbersuggestService {
 
       exportToCsvButtons[0].click();
     });
-
-    // await this.utils.waitToDownloadCsv(downloadsFolder);
+    console.log('waiting starts');
+    await this.utils.waitToDownloadFile(downloadsFolder, downloadsFileName);
   }
 }

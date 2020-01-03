@@ -95,6 +95,6 @@ export class KeywordIoService {
       downloadCsvBtnSel,
     );
 
-    await this.utils.waitToDownloadCsv(downloadsFolder, downloadCsvFileName);
+    await this.utils.waitToDownloadFile(downloadsFolder, downloadCsvFileName);
   }
 }

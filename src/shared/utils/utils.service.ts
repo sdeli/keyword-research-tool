@@ -41,7 +41,7 @@ export class UtilsService {
     });
   }
 
-  async waitToDownloadCsv(folderAbsPath: string, fileNameToWaitFor: string) {
+  async waitToDownloadFile(folderAbsPath: string, fileNameToWaitFor: string) {
     console.log(folderAbsPath);
     console.log(fileNameToWaitFor);
     return new Promise((resolve, reject) => {

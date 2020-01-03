@@ -1,6 +1,8 @@
 import * as dotenv from 'dotenv';
-const err = dotenv.config({ path: '/home/sandor/Projects/keyword-research-tool/.env' });
-console.log(err);
+// const err = dotenv.config({ path: '/home/sandor/Projects/keyword-research-tool/.env' });
+const err = dotenv.config({ path: `${process.cwd()}/.env` });
+if (err.error) throw new Error('parsing .env resulted in error');
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
