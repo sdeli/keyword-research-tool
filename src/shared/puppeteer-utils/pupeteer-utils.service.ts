@@ -1,5 +1,4 @@
 import { UtilsService } from '@utils/utils.service';
-import { Repository } from 'typeorm';
 import { Browser, Page } from 'puppeteer';
 
 import puppeteerExtra from 'puppeteer-extra';
@@ -9,9 +8,6 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 import { PreparePageForDetection } from './prepare-page-for-detection/prepare-page-for-detection';
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Session } from '@puppeteer-utils/entities/session.entity';
-import { SessionUser } from '@puppeteer-utils/entities/session-user.entity';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 
@@ -29,8 +25,6 @@ interface PageOptsI {
 @Injectable()
 export class PuppeteerUtilsService {
   constructor(
-    @InjectRepository(Session) private readonly sessionRepo: Repository<Session>,
-    @InjectRepository(SessionUser) private readonly sessionUserRepo: Repository<SessionUser>,
     @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly prepare: PreparePageForDetection,
     private readonly utils: UtilsService,
@@ -59,7 +53,7 @@ export class PuppeteerUtilsService {
       headless,
       slowMo: 50,
       userDataDir,
-      // executablePath: '/usr/bin/google-chrome-stable',
+      executablePath: '/usr/bin/google-chrome-stable',
     };
 
     const browser = await puppeteerExtra.launch(pupeteerExtraOpts);

@@ -1,5 +1,6 @@
 import { GoogleSerpLinks } from './google-serp.entity';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToMany, ManyToOne } from 'typeorm';
+import { ScrapeSession } from '@shared/entities/scrape-session.entity';
 
 @Entity()
 export class Keyword {
@@ -10,16 +11,24 @@ export class Keyword {
   keyword: string;
 
   @Column('int')
-  volume: number;
+  searchvolume: number;
 
   @Column('int')
-  siteDifficulty: number;
+  searchDifficulty: number;
+
+  @Column('int')
+  payedDifficulty: number;
 
   @ManyToMany(() => Keyword, {
     cascade: true,
   })
-  @JoinTable()
-  relatedKeywords: GoogleSerpLinks[];
+  googleSerpLinks: GoogleSerpLinks[];
+
+  @ManyToOne(
+    type => ScrapeSession,
+    scrapeSession => scrapeSession.id,
+  )
+  scrapeSession: ScrapeSession;
 
   @CreateDateColumn()
   createdAt: Date;

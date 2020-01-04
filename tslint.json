@@ -22,6 +22,7 @@
     "no-floating-promises": true,
     "await-promise": true,
     "non-string-literal": false,
+      "no-string-literal": false,
     "no-shadowed-variable": false,
       "no-empty-interface": false,
       "curly": false

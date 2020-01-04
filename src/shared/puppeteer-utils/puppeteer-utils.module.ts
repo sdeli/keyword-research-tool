@@ -4,9 +4,6 @@ import { PreparePageForDetection } from '@shared/puppeteer-utils/prepare-page-fo
 
 // wee need this import to extend Page interface in @types/puppeteer
 import {} from './puppeteer-mods';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { Session } from '@puppeteer-utils/entities/session.entity';
-import { SessionUser } from '@puppeteer-utils/entities/session-user.entity';
 import { config } from '@config';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
@@ -15,7 +12,7 @@ import { UtilsModule } from '@shared/utils';
 const globalConfig: GlobalConfigI = config.global;
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Session, SessionUser]), UtilsModule],
+  imports: [UtilsModule],
   providers: [
     PuppeteerUtilsService,
     PreparePageForDetection,

@@ -48,9 +48,10 @@ export class UtilsService {
       const watcher = fs.watch(folderAbsPath);
 
       watcher.on('change', (eventType, currFilesName) => {
-        console.log(eventType);
+        console.log(fileNameToWaitFor);
         console.log(currFilesName);
         const isDownloadFile = currFilesName === fileNameToWaitFor;
+        console.log(isDownloadFile);
         if (isDownloadFile) {
           watcher.close();
           return resolve();

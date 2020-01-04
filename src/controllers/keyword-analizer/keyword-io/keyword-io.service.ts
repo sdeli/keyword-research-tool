@@ -90,11 +90,15 @@ export class KeywordIoService {
 
     const downloadCsvBtn = await pageOnKwIo.$(downloadCsvBtnSel);
     if (!downloadCsvBtn) await pageOnKwIo.waitForSelector(downloadCsvBtnSel);
-    await pageOnKwIo.evaluate(
+    const clickDownloadCsvBtnPromise = pageOnKwIo.evaluate(
       downloadCsvBtnSel => document.querySelector(downloadCsvBtnSel).click(),
       downloadCsvBtnSel,
     );
 
-    await this.utils.waitToDownloadFile(downloadsFolder, downloadCsvFileName);
+    const waitForFileDownloadPromise = this.utils.waitToDownloadFile(downloadsFolder, downloadCsvFileName);
+
+    console.log('file download starts');
+    await Promise.all([clickDownloadCsvBtnPromise, waitForFileDownloadPromise]);
+    console.log(`${downloadCsvFileName} has been downloaded`);
   }
 }

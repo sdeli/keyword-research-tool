@@ -1,5 +1,7 @@
+import * as fs from 'fs';
 import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
-
+// @ts-ignore
+import { csv } from 'csvtojson';
 import { Injectable, Inject } from '@nestjs/common';
 import { Browser, Page } from 'puppeteer';
 
@@ -8,6 +10,9 @@ import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { UtilsService } from '@shared/utils';
+import { Keyword } from '@keyword-analizer/entities/keyword.entity';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class UbersuggestService {
@@ -16,11 +21,11 @@ export class UbersuggestService {
     @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly puppeteerUtils: PuppeteerUtilsService,
     private readonly utils: UtilsService,
+    @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
   async getAnaliticsForOne(keyword: string) {
     console.log('getting analitcs for: ' + keyword);
-
     const { researchKeywordInput } = this.config.selectors;
     let hasPageLoadedCorrectData = false;
     let tryCounter = 0;
@@ -52,9 +57,15 @@ export class UbersuggestService {
 
     await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'searched');
 
-    await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
+    const downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
     console.log(11);
     await browser.close();
+
+    await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath);
+    console.log('keyword analitics data saved into db');
+
+    await this.deleteDownloadedCsvSync(downloadedFilePath);
+    console.log('csv deleted');
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
@@ -193,12 +204,13 @@ export class UbersuggestService {
     await startKeywordResBtn.click();
   }
 
-  private async downloadKeywAnaliticsCsv(page: Page, keyword: string): Promise<void> {
+  private async downloadKeywAnaliticsCsv(page: Page, keyword: string): Promise<string> {
     console.log('csv download');
     const { downloadsFolder } = this.globalConfig;
     const downloadsFileName = `ubersuggest_${keyword}.csv`.replace(' ', '_');
 
-    await page.evaluate(() => {
+    const waitForFileDownloadPromise = this.utils.waitToDownloadFile(downloadsFolder, downloadsFileName);
+    const clickDownloadBtnPromise = page.evaluate(() => {
       const buttonNodeList = document.querySelectorAll('button');
       const buttonNodesArr = [].slice.call(buttonNodeList);
       const exportToCsvButtons = buttonNodesArr.filter(button => {
@@ -208,7 +220,42 @@ export class UbersuggestService {
 
       exportToCsvButtons[0].click();
     });
-    console.log('waiting starts');
-    await this.utils.waitToDownloadFile(downloadsFolder, downloadsFileName);
+
+    console.log('waiting for download & download starts');
+    await Promise.all([waitForFileDownloadPromise, clickDownloadBtnPromise]);
+    console.log(`${downloadsFileName} has been downloadeed`);
+
+    const downloadedFilePath = `${downloadsFolder}/${downloadsFileName}`;
+    return downloadedFilePath;
+  }
+
+  private async saveAnaliticsIntoDbFromCsv(downloadedFilePath: string) {
+    const kywAnalitics: any[] = await csv().fromFile(downloadedFilePath);
+    const keywords = this.parseAnaliticsIntoKeywEntities(kywAnalitics);
+
+    await this.keywordRepo.save(keywords);
+  }
+
+  private parseAnaliticsIntoKeywEntities(kywAnalitics: any[]): Keyword[] {
+    return kywAnalitics.map(analiticsObj => {
+      const keyword = new Keyword();
+
+      keyword.keyword = analiticsObj['Keyword'] ? analiticsObj['Keyword'] : null;
+      keyword.searchvolume = analiticsObj['Search Volume'] ? parseInt(analiticsObj['Search Volume'], 10) : null;
+      keyword.searchDifficulty = analiticsObj['Search Difficulty']
+        ? parseInt(analiticsObj['Search Difficulty'], 10)
+        : null;
+      keyword.payedDifficulty = analiticsObj['Paid Difficulty'] ? parseInt(analiticsObj['Paid Difficulty'], 10) : null;
+
+      return keyword;
+    });
+  }
+
+  private deleteDownloadedCsvSync(downloadedFilePath: string) {
+    try {
+      fs.unlinkSync(downloadedFilePath);
+    } catch (err) {
+      console.error(err);
+    }
   }
 }

@@ -39,6 +39,7 @@
     "@nestjs/typeorm": "^6.2.0",
     "@types/puppeteer": "^2.0.0",
     "apify": "^0.17.0",
+    "csvtojson": "^2.0.10",
     "faker": "^4.1.0",
     "nodemon": "^2.0.2",
     "pg": "^7.14.0",
