@@ -65,4 +65,12 @@ export class UtilsService {
       });
     });
   }
+
+  deleteFileSync(downloadedFilePath: string) {
+    try {
+      fs.unlinkSync(downloadedFilePath);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 }

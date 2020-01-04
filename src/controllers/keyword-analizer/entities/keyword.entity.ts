@@ -10,13 +10,22 @@ export class Keyword {
   @Column('varchar')
   keyword: string;
 
-  @Column('int')
-  searchvolume: number;
+  @Column({
+    type: 'int',
+    nullable: true,
+  })
+  searchVolume: number;
 
-  @Column('int')
+  @Column({
+    type: 'int',
+    nullable: true,
+  })
   searchDifficulty: number;
 
-  @Column('int')
+  @Column({
+    type: 'int',
+    nullable: true,
+  })
   payedDifficulty: number;
 
   @ManyToMany(() => Keyword, {

@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 // @ts-ignore
 import { csv } from 'csvtojson';
@@ -64,7 +63,7 @@ export class UbersuggestService {
     await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath);
     console.log('keyword analitics data saved into db');
 
-    await this.deleteDownloadedCsvSync(downloadedFilePath);
+    this.utils.deleteFileSync(downloadedFilePath);
     console.log('csv deleted');
   }
 
@@ -230,18 +229,59 @@ export class UbersuggestService {
   }
 
   private async saveAnaliticsIntoDbFromCsv(downloadedFilePath: string) {
-    const kywAnalitics: any[] = await csv().fromFile(downloadedFilePath);
-    const keywords = this.parseAnaliticsIntoKeywEntities(kywAnalitics);
+    const kywAnaliticses: any[] = await csv().fromFile(downloadedFilePath);
+    const { keywordsToUpdateInDb, keywordsToSaveIntoDb } = await this.separateKeywordsInAnalitics(kywAnaliticses);
 
-    await this.keywordRepo.save(keywords);
+    console.log('new keywords from ubersuggest:');
+    console.log(keywordsToSaveIntoDb);
+
+    await this.createNewKywEntitiesAndSave(keywordsToSaveIntoDb);
+    await this.updateKywEntities(keywordsToUpdateInDb, kywAnaliticses);
   }
 
-  private parseAnaliticsIntoKeywEntities(kywAnalitics: any[]): Keyword[] {
-    return kywAnalitics.map(analiticsObj => {
+  private async separateKeywordsInAnalitics(
+    kywAnaliticses: any[],
+  ): Promise<{
+    keywordsToUpdateInDb: any[];
+    keywordsToSaveIntoDb: any[];
+  }> {
+    const whereConditons = kywAnaliticses.reduce((acc, currKeywordAnalitics) => {
+      if (currKeywordAnalitics.hasOwnProperty('Keyword')) {
+        const keyword = currKeywordAnalitics['Keyword'];
+        return [...acc, { keyword }];
+      } else {
+        return acc;
+      }
+    }, []);
+
+    const keywordsHaveAlreadyInDb = await this.keywordRepo.find({
+      where: whereConditons,
+    });
+
+    const keywordsMissingFromDb = kywAnaliticses.reduce((acc, currKeywordAnalitics) => {
+      const keyword = currKeywordAnalitics.hasOwnProperty('Keyword');
+      if (!keyword) return acc;
+
+      const isKeywordMissingFromDb = !keywordsHaveAlreadyInDb.find(keyword => {
+        return keyword.keyword === currKeywordAnalitics['Keyword'];
+      });
+
+      if (isKeywordMissingFromDb) return [...acc, currKeywordAnalitics];
+      else return acc;
+    }, []);
+
+    return {
+      keywordsToUpdateInDb: keywordsHaveAlreadyInDb,
+      keywordsToSaveIntoDb: keywordsMissingFromDb,
+    };
+  }
+
+  private async createNewKywEntitiesAndSave(kywAnalitics: any[]): Promise<void> {
+    const keywords = kywAnalitics.map(analiticsObj => {
       const keyword = new Keyword();
 
       keyword.keyword = analiticsObj['Keyword'] ? analiticsObj['Keyword'] : null;
-      keyword.searchvolume = analiticsObj['Search Volume'] ? parseInt(analiticsObj['Search Volume'], 10) : null;
+      keyword.searchVolume = analiticsObj['Search Volume'] ? parseInt(analiticsObj['Search Volume'], 10) : null;
       keyword.searchDifficulty = analiticsObj['Search Difficulty']
         ? parseInt(analiticsObj['Search Difficulty'], 10)
         : null;
@@ -249,13 +289,30 @@ export class UbersuggestService {
 
       return keyword;
     });
+
+    await this.keywordRepo.save(keywords);
   }
 
-  private deleteDownloadedCsvSync(downloadedFilePath: string) {
-    try {
-      fs.unlinkSync(downloadedFilePath);
-    } catch (err) {
-      console.error(err);
-    }
+  private async updateKywEntities(keywordsToUpdateInDb: Keyword[], kywAnaliticses: any[]) {
+    const updatedKeywords = keywordsToUpdateInDb.map(currKeyword => {
+      const matchingKywAnalitics = kywAnaliticses.find(currKywAnalitics => {
+        return currKeyword.keyword === currKywAnalitics['Keyword'];
+      });
+
+      currKeyword.keyword = matchingKywAnalitics['Keyword'] ? matchingKywAnalitics['Keyword'] : null;
+      currKeyword.searchVolume = matchingKywAnalitics['Search Volume']
+        ? parseInt(matchingKywAnalitics['Search Volume'], 10)
+        : null;
+      currKeyword.searchDifficulty = matchingKywAnalitics['Search Difficulty']
+        ? parseInt(matchingKywAnalitics['Search Difficulty'], 10)
+        : null;
+      currKeyword.payedDifficulty = matchingKywAnalitics['Paid Difficulty']
+        ? parseInt(matchingKywAnalitics['Paid Difficulty'], 10)
+        : null;
+
+      return currKeyword;
+    });
+
+    await this.keywordRepo.save(updatedKeywords);
   }
 }

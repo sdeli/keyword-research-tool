@@ -1,12 +1,17 @@
 import { UtilsService } from '@utils/utils.service';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { Page, Browser } from 'puppeteer';
-
+// @ts-ignore
+import { csv } from 'csvtojson';
 import { Injectable, Inject } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+
 import { KeywordIoConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
+import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 
 @Injectable()
 export class KeywordIoService {
@@ -15,6 +20,7 @@ export class KeywordIoService {
     @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConf: GlobalConfigI,
     private readonly puppeteerUtils: PuppeteerUtilsService,
     private readonly utils: UtilsService,
+    @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
   async getSuggestionsForOne(keyword: string) {
@@ -27,9 +33,12 @@ export class KeywordIoService {
       return console.log('no suggestions found for: ' + keyword);
     }
 
-    await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo, keyword);
+    const downloadedFilePath = await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo, keyword);
     console.log(11);
     await browser.close();
+
+    await this.saveSuggestionsIntoDbFromCsv(downloadedFilePath, keyword);
+    this.utils.deleteFileSync(downloadedFilePath);
   }
 
   async getPageOnKywdIo(): Promise<{
@@ -83,7 +92,7 @@ export class KeywordIoService {
     });
   }
 
-  private async downloadKywSuggestionsCsvFromKywIo(pageOnKwIo: Page, keyword: string): Promise<void> {
+  private async downloadKywSuggestionsCsvFromKywIo(pageOnKwIo: Page, keyword: string): Promise<string> {
     const { downloadCsvBtnSel } = this.config.selectors;
     const { downloadsFolder } = this.globalConf;
     const downloadCsvFileName = `Keyword Tool Export - ${keyword}.csv`;
@@ -100,5 +109,31 @@ export class KeywordIoService {
     console.log('file download starts');
     await Promise.all([clickDownloadCsvBtnPromise, waitForFileDownloadPromise]);
     console.log(`${downloadCsvFileName} has been downloaded`);
+
+    const downloadedCsvPath = `${downloadsFolder}/${downloadCsvFileName}`;
+    return downloadedCsvPath;
+  }
+
+  private async saveSuggestionsIntoDbFromCsv(downloadedFilePath: string, keyword: string) {
+    const kywSuggestions: any[] = await csv({ noheader: true }).fromFile(downloadedFilePath);
+    const keywordEntities = await this.parseSuggestionsIntoKeywEntities(kywSuggestions, keyword);
+
+    await this.keywordRepo.save(keywordEntities);
+    console.log('keyword suggestions have been saved to db');
+  }
+
+  private async parseSuggestionsIntoKeywEntities(kywSuggestions: any[], keyword: string): Promise<Keyword[]> {
+    const keywordEntities = kywSuggestions.map(currKeywSuggestion => {
+      const keywordEntity = new Keyword();
+      keywordEntity.keyword = currKeywSuggestion['field1'];
+
+      return keywordEntity;
+    });
+
+    const keywordEntity = new Keyword();
+    keywordEntity.keyword = keyword;
+    keywordEntities.unshift(keywordEntity);
+
+    return keywordEntities;
   }
 }
