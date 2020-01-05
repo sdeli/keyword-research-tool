@@ -127,7 +127,7 @@ export class PuppeteerUtilsService {
   async solveCaptchas(page: Page): Promise<void> {
     console.log('solving captchas');
     const { error } = await page.solveRecaptchas();
-    if (error) throw error;
+    if (error) throw new Error(error);
     console.log('solved captcha');
   }
 
@@ -135,7 +135,7 @@ export class PuppeteerUtilsService {
     const captchasOnPage = [];
 
     const { captchas, error } = await page.findRecaptchas();
-    if (error) throw error;
+    if (error) throw new Error(error);
     if (captchas.length > 0) captchasOnPage.push(...captchas);
 
     return captchasOnPage.length > 0;

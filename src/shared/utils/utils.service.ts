@@ -1,8 +1,15 @@
 import * as fs from 'fs';
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+
+import { ScrapeSession } from '@shared/entities/scrape-session.entity';
+import { SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
 
 @Injectable()
 export class UtilsService {
+  constructor(@InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>) {}
+
   waitBetween(min: number = 3000, max: number = 6000): Promise<void> {
     const timeToWait = Math.floor(Math.random() * (max - min) + min);
     console.log(timeToWait);
@@ -72,5 +79,23 @@ export class UtilsService {
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async saveScrapeSession(scrapeSessionParams: SaveScrapeSessionParamsI) {
+    const { scrapeSessionId, keyword, path, err } = scrapeSessionParams;
+    let errorJson = null;
+
+    if (err) {
+      errorJson = JSON.stringify({ name: err.name, msg: err.message, stack: err.stack }, null, 2);
+    }
+    const scrapeSession = new ScrapeSession();
+
+    scrapeSession.id = scrapeSessionId;
+    scrapeSession.keyword = keyword;
+    scrapeSession.isSuccesful = !err;
+    scrapeSession.error = errorJson;
+    scrapeSession.path = path;
+
+    await this.scrapeSessionRepo.save(scrapeSession);
   }
 }

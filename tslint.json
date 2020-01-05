@@ -18,7 +18,6 @@
     "no-console": false,
     "trailing-comma": [true, { "multiline": "always", "singleline": "never" }],
     "no-relative-imports": true,
-    "no-unused-variable": true,
     "no-floating-promises": true,
     "await-promise": true,
     "non-string-literal": false,

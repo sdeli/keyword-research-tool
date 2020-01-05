@@ -1,5 +1,8 @@
-import { UbersuggestService } from './ubersuggest/ubersuggest.service';
+// const uuidv1 = require('uuid/v1');
+import uuidv1 from 'uuid/v1';
 import { Controller, Get, Header, Param } from '@nestjs/common';
+
+import { UbersuggestService } from './ubersuggest/ubersuggest.service';
 import { KeywordIoService } from './keyword-io/keyword-io.service';
 
 @Controller('keyword')
@@ -32,11 +35,21 @@ export class KeywordAnalizerController {
 
   @Get('suggestions/:keyword')
   getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
-    this.kywIoService.getSuggestionsForOne(keyword);
+    const scrapeSessionId = uuidv1();
+    this.kywIoService.getSuggestionsForOne(scrapeSessionId, keyword).catch(err => {
+      console.error(err);
+    });
+
+    return scrapeSessionId;
   }
 
   @Get('analitics/:keyword')
-  getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
-    this.ubersuggestService.getAnaliticsForOne(keyword);
+  async getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
+    const scrapeSessionId = uuidv1();
+    this.ubersuggestService.getAnaliticsForOne(scrapeSessionId, keyword).catch(err => {
+      console.error(err);
+    });
+
+    return scrapeSessionId;
   }
 }

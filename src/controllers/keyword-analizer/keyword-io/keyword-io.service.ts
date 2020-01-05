@@ -7,7 +7,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { KeywordIoConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { KeywordIoConfigI, SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
 import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
@@ -23,22 +23,46 @@ export class KeywordIoService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
-  async getSuggestionsForOne(keyword: string) {
-    const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo();
-    await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
+  async getSuggestionsForOne(scrapeSessionId: string, keyword: string) {
+    console.log(`getting suggestions for: ${keyword}`);
+    const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
+      scrapeSessionId,
+      path: 'keyword/suggestions/:keyword',
+      keyword,
+    };
 
-    const hasFoundKeywordSuggestions = await this.hasFoundKeywordsToDownload(pageOnKwIo);
-    if (!hasFoundKeywordSuggestions) {
+    try {
+      const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo();
+      console.log('got anti captcah page on keyword.io');
+
+      await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
+      console.log('research for suggestions done');
+
+      const hasFoundKeywordSuggestions = await this.hasFoundKeywordsToDownload(pageOnKwIo);
+      if (!hasFoundKeywordSuggestions) {
+        await browser.close();
+        return console.log('no suggestions found');
+      } else console.log('found suggestions');
+
+      const downloadedFilePath = await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo, keyword);
+      console.log(`${downloadedFilePath} => is downloaded`);
+
       await browser.close();
-      return console.log('no suggestions found for: ' + keyword);
+
+      await this.saveSuggestionsIntoDbFromCsv(downloadedFilePath, keyword);
+      console.log('keyword suggestions saved into db');
+
+      this.utils.deleteFileSync(downloadedFilePath);
+      console.log(`${downloadedFilePath} => is deleted`);
+
+      await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved');
+    } catch (e) {
+      console.error(e);
+      saveScrapeSessionParams.err = e;
+      await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved with error');
     }
-
-    const downloadedFilePath = await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo, keyword);
-    console.log(11);
-    await browser.close();
-
-    await this.saveSuggestionsIntoDbFromCsv(downloadedFilePath, keyword);
-    this.utils.deleteFileSync(downloadedFilePath);
   }
 
   async getPageOnKywdIo(): Promise<{
@@ -73,14 +97,13 @@ export class KeywordIoService {
       document.querySelector(researchKeywordInputSel).value = '';
     }, researchKeywordInput);
 
-    console.log(researchKeywordInput);
     await pageOnKwIo.type(researchKeywordInput, keyword);
 
-    console.log(startKywResBtn);
     await pageOnKwIo.click(startKywResBtn);
 
     console.log('waiting for nav');
     await pageOnKwIo.waitForNavigation({ waitUntil: 'domcontentloaded' });
+
     await pageOnKwIo.waitForSelector(keywordsAppearedSel);
     console.log('keywords appeared');
   }

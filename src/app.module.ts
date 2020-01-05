@@ -1,10 +1,10 @@
-import { KeywordAnalizerModule } from '@keyword-analizer/keyword-analizer.module';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+
+import { KeywordAnalizerModule } from '@keyword-analizer/keyword-analizer.module';
 import { AppService } from './app.service';
 import { UtilsModule } from '@utils/utils.module';
-import { UtilsService } from '@utils/utils.service';
-import { PuppeteerUtilsModule } from './shared/puppeteer-utils/puppeteer-utils.module';
+import { PuppeteerUtilsModule } from '@puppeteer-utils/puppeteer-utils.module';
 
 @Module({
   imports: [
@@ -14,6 +14,6 @@ import { PuppeteerUtilsModule } from './shared/puppeteer-utils/puppeteer-utils.m
     PuppeteerUtilsModule,
   ],
   controllers: [],
-  providers: [AppService, UtilsService],
+  providers: [AppService],
 })
 export class AppModule {}

@@ -54,7 +54,8 @@
     "rimraf": "^3.0.0",
     "ttypescript": "^1.5.7",
     "typeorm": "^0.2.21",
-    "typeorm-seeding": "^1.2.0"
+    "typeorm-seeding": "^1.2.0",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "@nestjs/cli": "^6.9.0",

@@ -1,4 +1,4 @@
-import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { SaveScrapeSessionParamsI, UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 // @ts-ignore
 import { csv } from 'csvtojson';
 import { Injectable, Inject } from '@nestjs/common';
@@ -23,48 +23,45 @@ export class UbersuggestService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
-  async getAnaliticsForOne(keyword: string) {
-    console.log('getting analitcs for: ' + keyword);
-    const { researchKeywordInput } = this.config.selectors;
-    let hasPageLoadedCorrectData = false;
-    let tryCounter = 0;
+  async getAnaliticsForOne(scrapeSessionId: string, keyword: string) {
+    console.log(`getting analitics for: ${keyword}`);
+    const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
+      scrapeSessionId,
+      path: 'keyword/analitics/:keyword',
+      keyword,
+    };
 
-    const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
-    let pageOnUbersuggest = antiCaptchaPage.page;
-    const { browser } = antiCaptchaPage;
+    try {
+      const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
+      let pageOnUbersuggest = antiCaptchaPage.page;
+      const { browser } = antiCaptchaPage;
+      console.log('got anti captcha page');
 
-    pageOnUbersuggest = await this.getScrapablePage(pageOnUbersuggest);
+      pageOnUbersuggest = await this.getScrapablePage(pageOnUbersuggest);
+      console.log('got scrapeable page');
 
-    do {
-      await this.searchForKeywordOnPage(pageOnUbersuggest, keyword);
-      // researchKywInputsValue if equals to the actual keyword then it indicates that the search has happened
-      // to the correct keyword and no to an other one... the page tricks with other keywords sometimes
-      const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
-        pageOnUbersuggest,
-        researchKeywordInput,
-      );
+      await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
+      console.log('page could show data succesfully');
 
-      console.log('data load was succesful ' + (researchKywInputsValue === keyword));
-      if (researchKywInputsValue === keyword) hasPageLoadedCorrectData = true;
-      else {
-        tryCounter++;
-      }
-    } while (!hasPageLoadedCorrectData && tryCounter < 4);
+      const downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
+      console.log(`${downloadedFilePath} => is downloaded`);
 
-    const pageFailedToLoadCorrectData = !hasPageLoadedCorrectData && tryCounter > 4;
-    if (pageFailedToLoadCorrectData) throw new Error('Page didnt load data, that could be downloaded');
+      await browser.close();
 
-    await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'searched');
+      await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath);
+      console.log('keyword analitics data saved into db');
 
-    const downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
-    console.log(11);
-    await browser.close();
+      this.utils.deleteFileSync(downloadedFilePath);
+      console.log(`${downloadedFilePath} => is deleted`);
 
-    await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath);
-    console.log('keyword analitics data saved into db');
-
-    this.utils.deleteFileSync(downloadedFilePath);
-    console.log('csv deleted');
+      await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved');
+    } catch (e) {
+      console.error(e);
+      saveScrapeSessionParams.err = e;
+      await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved with error');
+    }
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
@@ -135,6 +132,31 @@ export class UbersuggestService {
 
     console.log('returning ' + successfullyLoggedIn);
     return successfullyLoggedIn;
+  }
+
+  private async searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest: Page, keyword: string) {
+    const { researchKeywordInput } = this.config.selectors;
+    let hasPageShownCorrectData = false;
+    let tryCounter = 0;
+
+    do {
+      await this.searchForKeywordOnPage(pageOnUbersuggest, keyword);
+      // researchKywInputsValue if equals to the actual keyword then it indicates that the search has happened
+      // to the correct keyword and no to an other one... the page tricks with other keywords sometimes
+      const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
+        pageOnUbersuggest,
+        researchKeywordInput,
+      );
+
+      console.log('data load was succesful ' + (researchKywInputsValue === keyword));
+      if (researchKywInputsValue === keyword) hasPageShownCorrectData = true;
+      else {
+        tryCounter++;
+      }
+    } while (!hasPageShownCorrectData && tryCounter < 4);
+
+    const pageFailedToShowCorrectData = !hasPageShownCorrectData && tryCounter > 4;
+    if (pageFailedToShowCorrectData) throw new Error('Page didnt load data, that could be downloaded');
   }
 
   private async searchForKeywordOnPage(pageOnUbersuggest: Page, keyword: string): Promise<void> {

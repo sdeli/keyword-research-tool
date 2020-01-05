@@ -23,3 +23,10 @@ export interface UbersuggestConfigI {
   };
   cookies: string[];
 }
+
+export interface SaveScrapeSessionParamsI {
+  scrapeSessionId: string;
+  keyword: string;
+  path: string;
+  err?: Error;
+}
