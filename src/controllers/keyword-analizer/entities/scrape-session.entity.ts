@@ -1,5 +1,5 @@
 import { Entity, Column, CreateDateColumn, ManyToOne, PrimaryColumn } from 'typeorm';
-import { Workflow } from '@shared/entities/workflow.entity';
+import { ScrapeWorkflow } from '@scrape-workflow/entities/scrape-workflow.entity';
 
 @Entity()
 export class ScrapeSession {
@@ -22,10 +22,10 @@ export class ScrapeSession {
   error: string;
 
   @ManyToOne(
-    type => Workflow,
-    workflow => workflow.scrapeSessions,
+    type => ScrapeWorkflow,
+    scrapeWorkflow => scrapeWorkflow.scrapeSessions,
   )
-  workflow: Workflow;
+  scrapeWorkflow: ScrapeWorkflow;
 
   @CreateDateColumn()
   createdAt: Date;

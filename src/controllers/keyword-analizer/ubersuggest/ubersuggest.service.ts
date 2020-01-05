@@ -10,7 +10,7 @@ import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { UtilsService } from '@shared/utils';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
-import { Repository } from 'typeorm';
+import { Not, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class UbersuggestService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
-  async getAnaliticsForOne(scrapeSessionId: string, keyword: string) {
+  async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
     console.log(`getting analitics for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
       scrapeSessionId,
@@ -32,12 +32,7 @@ export class UbersuggestService {
     };
 
     try {
-      const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
-      let pageOnUbersuggest = antiCaptchaPage.page;
-      const { browser } = antiCaptchaPage;
-      console.log('got anti captcha page');
-
-      pageOnUbersuggest = await this.getScrapablePage(pageOnUbersuggest);
+      const { browser, pageOnUbersuggest } = await this.getScrapablePage();
       console.log('got scrapeable page');
 
       await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
@@ -64,6 +59,24 @@ export class UbersuggestService {
     }
   }
 
+  async scrapeAnaliticsForMoreKywsAndUpdateDb(suggestionScrapeSessionId: string, ownScrapeSessionId: string) {
+    try {
+      let hasKeywordsInDbWithoutAnalitics = true;
+      const { browser, pageOnUbersuggest } = await this.getScrapablePage();
+      console.log('got anti captcha page');
+
+      while (hasKeywordsInDbWithoutAnalitics) {
+        const keyword = await this.getKeywordSuggestion(suggestionScrapeSessionId);
+        if (!keyword) hasKeywordsInDbWithoutAnalitics = false;
+        await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword.keyword);
+      }
+
+      await browser.close();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
     const { url, headless } = this.config;
     const { downloadsFolder, userDataFolder } = this.globalConfig;
@@ -82,8 +95,13 @@ export class UbersuggestService {
     };
   }
 
-  private async getScrapablePage(pageOnUbersuggest: Page): Promise<Page> {
+  private async getScrapablePage(): Promise<{ browser: Browser; pageOnUbersuggest: Page }> {
     console.log('getting scrapable page');
+
+    const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
+    const pageOnUbersuggest = antiCaptchaPage.page;
+    const { browser } = antiCaptchaPage;
+    console.log('got anti captcha page');
 
     const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
     console.log('is logged in: ' + isLoggedIn);
@@ -101,7 +119,10 @@ export class UbersuggestService {
       await this.utils.wait(3000);
     }
 
-    return pageOnUbersuggest;
+    return {
+      browser,
+      pageOnUbersuggest,
+    };
   }
 
   private async isLoggedInToUbersuggest(pageOnUbersuggest: Page): Promise<boolean> {
@@ -336,5 +357,16 @@ export class UbersuggestService {
     });
 
     await this.keywordRepo.save(updatedKeywords);
+  }
+
+  private getKeywordSuggestion(suggestionScrapeId: string) {
+    return this.keywordRepo.findOne({
+      where: {
+        payedDifficulty: null,
+        searchDifficulty: null,
+        searchVolume: null,
+        id: suggestionScrapeId,
+      },
+    });
   }
 }

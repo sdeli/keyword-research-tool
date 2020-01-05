@@ -23,7 +23,7 @@ export class KeywordIoService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
-  async getSuggestionsForOne(scrapeSessionId: string, keyword: string) {
+  async scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
     console.log(`getting suggestions for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
       scrapeSessionId,

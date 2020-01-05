@@ -5,7 +5,7 @@ import { UtilsService } from './utils.service';
 import { UtilsConfigI } from './utils.interfaces';
 import { config } from '@config';
 import { UTILS_CONFIG_TOKEN } from './utils.types';
-import { ScrapeSession } from '@shared/entities/scrape-session.entity';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 
 const UtilsConfig: UtilsConfigI = config.utils;
 

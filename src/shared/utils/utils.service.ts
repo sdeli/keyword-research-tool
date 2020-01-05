@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { ScrapeSession } from '@shared/entities/scrape-session.entity';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
 
 @Injectable()

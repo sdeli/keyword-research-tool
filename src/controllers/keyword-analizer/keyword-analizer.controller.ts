@@ -1,4 +1,3 @@
-// const uuidv1 = require('uuid/v1');
 import uuidv1 from 'uuid/v1';
 import { Controller, Get, Header, Param } from '@nestjs/common';
 
@@ -36,7 +35,7 @@ export class KeywordAnalizerController {
   @Get('suggestions/:keyword')
   getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
     const scrapeSessionId = uuidv1();
-    this.kywIoService.getSuggestionsForOne(scrapeSessionId, keyword).catch(err => {
+    this.kywIoService.scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId, keyword).catch(err => {
       console.error(err);
     });
 
@@ -44,12 +43,25 @@ export class KeywordAnalizerController {
   }
 
   @Get('analitics/:keyword')
-  async getKeywordAnaliticsForOne(@Param('keyword') keyword: string) {
+  async scrapeAnaliticsForOneAndSaveInDb(@Param('keyword') keyword: string) {
     const scrapeSessionId = uuidv1();
-    this.ubersuggestService.getAnaliticsForOne(scrapeSessionId, keyword).catch(err => {
+    this.ubersuggestService.scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId, keyword).catch(err => {
       console.error(err);
     });
 
     return scrapeSessionId;
+  }
+
+  @Get('analitics/:scrape-session-id')
+  async scrapeAnaliticsForMoreAndSaveInDb(@Param('suggestion-scrape-session-id') suggestionScrapeSessionId: string) {
+    const ownScrapeSessionId = uuidv1();
+
+    this.ubersuggestService
+      .scrapeAnaliticsForMoreKywsAndUpdateDb(suggestionScrapeSessionId, ownScrapeSessionId)
+      .catch(err => {
+        console.error(err);
+      });
+
+    return ownScrapeSessionId;
   }
 }

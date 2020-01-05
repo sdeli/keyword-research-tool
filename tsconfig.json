@@ -15,6 +15,7 @@
       "esModuleInterop": true,
     "paths": {
       "@keyword-analizer/*": ["src/controllers/keyword-analizer/*"],
+      "@scrape-workflow/*": ["src/controllers/scrape-workflow/*"],
       "@utils/*": ["src/shared/utils/*"],
       "@assets/*": ["src/assets/*"],
       "@config": ["src/config/index"],

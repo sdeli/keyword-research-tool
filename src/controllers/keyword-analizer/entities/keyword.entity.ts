@@ -1,6 +1,6 @@
 import { GoogleSerpLinks } from './google-serp.entity';
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToMany, ManyToOne } from 'typeorm';
-import { ScrapeSession } from '@shared/entities/scrape-session.entity';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 
 @Entity()
 export class Keyword {
