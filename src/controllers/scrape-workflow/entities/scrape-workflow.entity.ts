@@ -17,7 +17,7 @@ export class ScrapeWorkflow {
 
   @OneToMany(
     type => ScrapeSession,
-    scrapeSession => scrapeSession.id,
+    scrapeSession => scrapeSession.scrapeWorkflow,
     { cascade: true },
   )
   scrapeSessions: ScrapeSession[];

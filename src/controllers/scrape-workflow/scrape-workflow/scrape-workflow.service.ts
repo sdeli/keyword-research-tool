@@ -16,24 +16,33 @@ export class ScrapeWorkflowService {
 
   async analizeKeywordsOfOne(keyword: string) {
     console.log(`analizing keywords for: ${keyword}`);
-    const suggestionsForOneKeywdEp = `http://localhost:3000/keyword/suggestions/${keyword}`;
-    const analiticsForOneKywdEp = 'http://localhost:3000/keyword/analitics/';
-    const path = '/scrape-workflow/:keyword';
+    const scrapeSuggestionsForOneAndSaveInDbEp = `http://localhost:3000/keyword/suggestions/${keyword}`;
+    // const scrapeAnaliticsForMoreKywsAndUpdateDbEp = 'http://localhost:3000/keyword/analitics/';
+    const currPath = '/scrape-workflow/:keyword';
 
     try {
-      const scrapeWorflow = await this.saveScrapeWorkflow(path);
+      // tslint:disable-next-line:no-var-keyword prefer-const
+      var scrapeWorflow = await this.saveScrapeWorkflow(currPath);
       console.log('scrape workflow saved');
 
-      const suggestionsScrapeId: string = await rp.get(suggestionsForOneKeywdEp);
+      const suggestionsScrapeId: string = await rp.get(scrapeSuggestionsForOneAndSaveInDbEp);
       console.log(`suggestion-scrape id: ${suggestionsScrapeId}`);
 
       const suggestionScrapeSession = await this.waitUntilSuggestionScrapeFinished(suggestionsScrapeId);
-      scrapeWorflow.scrapeSessions.push(suggestionScrapeSession);
+      console.log('suggestion scrape finished');
+
+      scrapeWorflow.scrapeSessions = [suggestionScrapeSession];
       await this.scrapeWorkflowRepo.save(scrapeWorflow);
       console.log('suggestions scrape session added to worflow');
 
       if (!suggestionScrapeSession.isSuccesful) return false;
-    } catch (e) {}
+      console.log('suggestions scrape session was succesful');
+    } catch (e) {
+      console.log(e);
+      scrapeWorflow.isSuccesful = false;
+      scrapeWorflow.error = e;
+      await this.scrapeWorkflowRepo.save(scrapeWorflow);
+    }
   }
 
   private saveScrapeWorkflow(path: string) {
