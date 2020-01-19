@@ -51,6 +51,9 @@ export class Keyword {
   @CreateDateColumn()
   createdAt: Date;
 
+  @Column({ type: 'jsonb', nullable: true })
+  error: any;
+
   @UpdateDateColumn({
     nullable: false,
   })

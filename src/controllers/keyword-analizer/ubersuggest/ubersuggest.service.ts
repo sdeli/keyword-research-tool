@@ -12,6 +12,7 @@ import { UtilsService } from '@shared/utils';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class UbersuggestService {
@@ -33,6 +34,7 @@ export class UbersuggestService {
     };
 
     let scrapeSession: ScrapeSession;
+    let downloadedKeywordsFilePath: string;
 
     try {
       scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
@@ -44,16 +46,18 @@ export class UbersuggestService {
       await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
       console.log('page could show data succesfully');
 
-      const downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
-      console.log(`${downloadedFilePath} => is downloaded`);
+      const { err, fileToDownloadPath } = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
+      if (err) throw new Error(err);
 
+      downloadedKeywordsFilePath = fileToDownloadPath;
+      console.log(`${downloadedKeywordsFilePath} => is downloaded`);
       await browser.close();
 
-      await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath, scrapeSession);
+      await this.saveAnaliticsIntoDbFromCsv(downloadedKeywordsFilePath, scrapeSession);
       console.log('keyword analitics data saved into db');
 
-      this.utils.deleteFileSync(downloadedFilePath);
-      console.log(`${downloadedFilePath} => is deleted`);
+      this.utils.deleteFileSync(downloadedKeywordsFilePath);
+      console.log(`${downloadedKeywordsFilePath} => is deleted`);
 
       scrapeSession.isSuccesful = true;
       await this.scrapeSessionRepo.save(scrapeSession);
@@ -74,24 +78,23 @@ export class UbersuggestService {
     };
     const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
 
-    let hasKeywordsInDbWithoutAnalitics = true;
-    let browser;
-    let pageOnUbersuggest;
-    let keyword;
+    const hasKeywordsInDbWithoutAnalitics = true;
+    let browser: Browser;
+    let pageOnUbersuggest: Page;
+    let keyword: string;
+    let downloadedKeywordsFilePath: string;
 
     while (hasKeywordsInDbWithoutAnalitics) {
       try {
-        // tslint:disable-next-line:no-var-keyword prefer-const
-        let keywordEntity = await this.getKeywordSuggestion(suggestionsScrapeId);
+        const keywordEntity = await this.getKeywordSuggestion(suggestionsScrapeId);
         if (!keywordEntity) {
           console.log('there are no more keywords without analitics in this suggestion scrape session');
-          hasKeywordsInDbWithoutAnalitics = false;
           break;
         } else keyword = keywordEntity.keyword;
       } catch (e) {
         console.log('err in try catch 1');
         console.error(e);
-        continue;
+        break;
       }
 
       try {
@@ -109,30 +112,36 @@ export class UbersuggestService {
         }
 
         await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
-        console.log('keyword analitics could be loaded');
-        // tslint:disable-next-line:no-var-keyword prefer-const
-        var downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
-        console.log(`${downloadedFilePath} => is downloaded`);
-      } catch (e) {
+        console.log('keyword analitics could be loaded into page');
+
+        const { err, fileToDownloadPath } = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
+        if (err) {
+          await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
+          console.log(`keyword: ${keyword} updated to include err`);
+          continue;
+        }
+
+        downloadedKeywordsFilePath = fileToDownloadPath;
+      } catch (err) {
         console.log('err in try catch 2');
-        console.error(e);
+        console.error(err);
+        await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
+        console.log(`keyword: ${keyword} updated to include err`);
+
         const hasRunningBrowser = browser?.close;
         if (hasRunningBrowser) await browser.close();
-        console.log('due to error browser closed asking for new page');
-        // tslint:disable-next-line:no-var-keyword
-        const pageObj = await this.getScrapablePage();
-        console.log('got new anti captcha page');
-        browser = pageObj.browser;
-        pageOnUbersuggest = pageObj.pageOnUbersuggest;
+        pageOnUbersuggest = null;
+
+        console.log('due to error browser closed');
         continue;
       }
 
       try {
-        await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath, scrapeSession);
+        await this.saveAnaliticsIntoDbFromCsv(downloadedKeywordsFilePath, scrapeSession);
         console.log('keyword analitics data saved into db');
 
-        this.utils.deleteFileSync(downloadedFilePath);
-        console.log(`${downloadedFilePath} => is deleted`);
+        this.utils.deleteFileSync(downloadedKeywordsFilePath);
+        console.log(`${downloadedKeywordsFilePath} => is deleted`);
       } catch (e) {
         console.log('err in try catch 3');
         console.log(e);
@@ -145,9 +154,7 @@ export class UbersuggestService {
 
     scrapeSession.isSuccesful = true;
     await this.scrapeSessionRepo.save(scrapeSession);
-    console.log('scrape session updated to successfull');
-
-    console.log('scrape finished browser closed');
+    console.log('scrape session updated to successfull, scrape finished');
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
@@ -317,13 +324,20 @@ export class UbersuggestService {
     await startKeywordResBtn.click();
   }
 
-  private async downloadKeywAnaliticsCsv(page: Page, keyword: string): Promise<string> {
+  private async downloadKeywAnaliticsCsv(
+    page: Page,
+    keyword: string,
+  ): Promise<{
+    err: string;
+    fileToDownloadPath: string;
+  }> {
     console.log('csv download');
     const { downloadsFolder } = this.globalConfig;
     const downloadsFileName = `ubersuggest_${keyword}.csv`.replace(/\s/g, '_');
+    const fileToDownloadPath = `${downloadsFolder}/${downloadsFileName}`;
 
-    const waitForFileDownloadPromise = this.utils.waitToDownloadFile(downloadsFolder, downloadsFileName);
-    const clickDownloadBtnPromise = page.evaluate(() => {
+    console.log('clicking download btn');
+    await page.evaluate(() => {
       const buttonNodeList = document.querySelectorAll('button');
       const buttonNodesArr = [].slice.call(buttonNodeList);
       const exportToCsvButtons = buttonNodesArr.filter(button => {
@@ -334,12 +348,34 @@ export class UbersuggestService {
       exportToCsvButtons[0].click();
     });
 
-    console.log('waiting for download & download starts');
-    await Promise.all([waitForFileDownloadPromise, clickDownloadBtnPromise]);
-    console.log(`${downloadsFileName} has been downloadeed`);
+    console.log('waiting for download file');
+    const couldFileBeDownloaded = await this.utils.waitToDownloadFileByPoll(fileToDownloadPath);
 
-    const downloadedFilePath = `${downloadsFolder}/${downloadsFileName}`;
-    return downloadedFilePath;
+    console.log(`could file be downloaded: ${couldFileBeDownloaded}`);
+    return {
+      err: couldFileBeDownloaded ? null : 'file could not be downloaded',
+      fileToDownloadPath: couldFileBeDownloaded ? fileToDownloadPath : null,
+    };
+  }
+
+  async updateKeywordToErr(err: any, keyword: string, suggestionsScrapeId: string) {
+    // const kywRelations = Keyword.getRelationNames();
+    const sugestionsScrapeSession = await this.scrapeSessionRepo.findOne({
+      where: [{ id: suggestionsScrapeId }],
+    });
+
+    const matchingKywEntity = await this.keywordRepo.findOne({
+      relations: ['scrapeSessions'],
+      where: [
+        {
+          keyword,
+          scrapeSession: [sugestionsScrapeSession],
+        },
+      ],
+    });
+
+    matchingKywEntity.error = err;
+    await this.keywordRepo.save(matchingKywEntity);
   }
 
   private async saveAnaliticsIntoDbFromCsv(downloadedFilePath: string, scrapeSession: ScrapeSession) {
@@ -414,7 +450,6 @@ export class UbersuggestService {
         return currKeyword.keyword === currKywAnalitics['Keyword'];
       });
 
-      // currKeyword.keyword = matchingKywAnalitics['Keyword'] ? matchingKywAnalitics['Keyword'] : null;
       currKeyword.searchVolume = matchingKywAnalitics['Search Volume']
         ? parseInt(matchingKywAnalitics['Search Volume'], 10)
         : null;
@@ -435,8 +470,6 @@ export class UbersuggestService {
 
   // keyword suggestions are keywords without analitics
   private getKeywordSuggestion(suggestionScrapeId: string) {
-    // const kywRelNames = Keyword.getRelationNames();
-
     return this.keywordRepo
       .createQueryBuilder('keyword')
       .innerJoinAndSelect('keyword.scrapeSessions', 'scrapeSessions', 'scrapeSessions.id = :scrapeId', {
@@ -444,6 +477,7 @@ export class UbersuggestService {
       })
       .where('keyword.searchVolume is null')
       .andWhere('keyword.searchDifficulty is null')
+      .andWhere('keyword.error is null')
       .getOne();
   }
 

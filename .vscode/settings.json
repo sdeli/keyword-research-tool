@@ -1,7 +1,20 @@
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnSave": false,
+  "editor.formatOnSave": true,
   "editor.tabCompletion": "off",
   "editor.tabSize": 2,
-  "autoimport.showNotifications": true
+  "autoimport.showNotifications": true,
+  "sqltools.connections": [
+    {
+      "askForPassword": false,
+      "database": "postgres",
+      "dialect": "PostgreSQL",
+      "isActive": false,
+      "isConnected": false,
+      "name": "keyword tool",
+      "port": 5432,
+      "server": "localhost",
+      "username": "postgres"
+    }
+  ]
 }

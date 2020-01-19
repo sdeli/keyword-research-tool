@@ -9,7 +9,7 @@
       "request": "launch",
       "name": "Launch Program",
       "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}/start"
+      "program": "${workspaceFolder}/dist/controllers/keyword-analizer/keyword-io/keyword.io.spec"
     },
     {
       "name": "Attach to Process",

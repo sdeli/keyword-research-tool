@@ -20,6 +20,7 @@ async function scrapeAnaliticsForMoreKywsAndUpdateDb() {
 
     process.send('new process scrapeAnaliticsForMoreKywsAndUpdateDb finished');
   } catch (err) {
+    console.log('error propagated to main level');
     throw new Error(err);
   }
 }

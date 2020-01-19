@@ -70,7 +70,28 @@ export class UtilsService {
         watcher.close();
         reject();
       });
+
+      setTimeout(() => {
+        reject('download was unsuccessful');
+      }, 30000);
     });
+  }
+
+  async waitToDownloadFileByPoll(fileToDownloadPath: string) {
+    console.log(`file to downalod path: ${fileToDownloadPath}`);
+    const maxPollCount = 20;
+
+    for (let i = 0; i < maxPollCount; i++) {
+      await this.wait(1500);
+
+      const isFileDownloaded = fs.existsSync(fileToDownloadPath);
+      console.log(`is the file downloaded: ${isFileDownloaded}`);
+      if (isFileDownloaded) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   deleteFileSync(downloadedFilePath: string) {

@@ -1,17 +1,22 @@
 import rp from 'request-promise';
+import request from 'request';
 
 (async () => {
-  await testKeywordSuggestions();
+  testKeywordSuggestions();
 })();
 
 async function testKeywordSuggestions() {
-  const options = {
-    uri: 'https://localhost:3000/keyword/suggestion/atomic',
-  };
+  request.get(
+    {
+      uri: 'http://localhost:3000/keyword',
+    },
+    (err, res) => {
+      if (err) {
+        console.log('err');
+        console.log(err);
+      }
 
-  try {
-    await rp(options);
-  } catch (e) {
-    console.log(e);
-  }
+      console.log(res);
+    },
+  );
 }

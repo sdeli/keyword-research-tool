@@ -66,6 +66,7 @@ export class KeywordAnalizerController {
       analiticsScrapeSessionId: uuidv1(),
       suggestionsScrapeId,
     });
+
     console.log('analitics conf ===============');
     console.log(analiticsConf);
     this.processQueueService.register(analiticsConf);
@@ -75,16 +76,6 @@ export class KeywordAnalizerController {
 
   @Get('test/:session')
   async test(@Param('session') suggestionsScrapeId: string) {
-    const analiticsScrapeId = uuidv1();
-
-    const stuff = await this.keywordRepo
-      .createQueryBuilder('keyword')
-      .innerJoinAndSelect('keyword.scrapeSessions', 'scrapeSessions', 'scrapeSessions.id != :scrapeId', {
-        scrapeId: analiticsScrapeId,
-      })
-      .where('scrapeSessions.id = :id', { id: suggestionsScrapeId })
-      .getOne();
-
-    console.log(stuff);
+    await this.ubersuggestService.updateKeywordToErr('fasz', 'hajszárító', suggestionsScrapeId);
   }
 }
