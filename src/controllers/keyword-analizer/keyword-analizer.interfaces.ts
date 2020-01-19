@@ -26,7 +26,12 @@ export interface UbersuggestConfigI {
 
 export interface SaveScrapeSessionParamsI {
   scrapeSessionId: string;
-  keyword: string;
+  keyword?: string;
   path: string;
   err?: Error;
+  isSuccesful?: boolean;
+}
+
+export interface EntityRelationNames {
+  [key: string]: string;
 }

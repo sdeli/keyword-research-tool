@@ -10,8 +10,8 @@ import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { UtilsService } from '@shared/utils';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
-import { Not, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 
 @Injectable()
 export class UbersuggestService {
@@ -21,6 +21,7 @@ export class UbersuggestService {
     private readonly puppeteerUtils: PuppeteerUtilsService,
     private readonly utils: UtilsService,
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
+    @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
   ) {}
 
   async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
@@ -31,7 +32,12 @@ export class UbersuggestService {
       keyword,
     };
 
+    let scrapeSession: ScrapeSession;
+
     try {
+      scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved');
+
       const { browser, pageOnUbersuggest } = await this.getScrapablePage();
       console.log('got scrapeable page');
 
@@ -43,38 +49,105 @@ export class UbersuggestService {
 
       await browser.close();
 
-      await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath);
+      await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath, scrapeSession);
       console.log('keyword analitics data saved into db');
 
       this.utils.deleteFileSync(downloadedFilePath);
       console.log(`${downloadedFilePath} => is deleted`);
 
-      await this.utils.saveScrapeSession(saveScrapeSessionParams);
-      console.log('scrape session saved');
+      scrapeSession.isSuccesful = true;
+      await this.scrapeSessionRepo.save(scrapeSession);
+      console.log('scrape session updated to successful');
     } catch (e) {
       console.error(e);
-      saveScrapeSessionParams.err = e;
-      await this.utils.saveScrapeSession(saveScrapeSessionParams);
-      console.log('scrape session saved with error');
+      scrapeSession.error = e;
+      await this.scrapeSessionRepo.save(scrapeSession);
+      console.log('scrape session updated to error');
     }
   }
 
-  async scrapeAnaliticsForMoreKywsAndUpdateDb(suggestionScrapeSessionId: string, ownScrapeSessionId: string) {
-    try {
-      let hasKeywordsInDbWithoutAnalitics = true;
-      const { browser, pageOnUbersuggest } = await this.getScrapablePage();
-      console.log('got anti captcha page');
+  async scrapeAnaliticsForMoreKywsAndUpdateDb(analiticsScrapeSessionId: string, suggestionsScrapeId: string) {
+    console.log(`start to scrapeAnaliticsForMoreKywsAndUpdateDb: ${analiticsScrapeSessionId} ${suggestionsScrapeId}`);
+    const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
+      scrapeSessionId: analiticsScrapeSessionId,
+      path: 'analitics/session/:session',
+    };
+    const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
 
-      while (hasKeywordsInDbWithoutAnalitics) {
-        const keyword = await this.getKeywordSuggestion(suggestionScrapeSessionId);
-        if (!keyword) hasKeywordsInDbWithoutAnalitics = false;
-        await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword.keyword);
+    let hasKeywordsInDbWithoutAnalitics = true;
+    let browser;
+    let pageOnUbersuggest;
+    let keyword;
+
+    while (hasKeywordsInDbWithoutAnalitics) {
+      try {
+        // tslint:disable-next-line:no-var-keyword prefer-const
+        let keywordEntity = await this.getKeywordSuggestion(suggestionsScrapeId);
+        if (!keywordEntity) {
+          console.log('there are no more keywords without analitics in this suggestion scrape session');
+          hasKeywordsInDbWithoutAnalitics = false;
+          break;
+        } else keyword = keywordEntity.keyword;
+      } catch (e) {
+        console.log('err in try catch 1');
+        console.error(e);
+        continue;
       }
 
-      await browser.close();
-    } catch (e) {
-      console.error(e);
+      try {
+        console.log(`current keyword to get analitics for: ${keyword}`);
+
+        const hasJustStartedScraping = !pageOnUbersuggest;
+        if (hasJustStartedScraping) {
+          const pageObj = await this.getScrapablePage();
+          console.log('got anti captcha page');
+          browser = pageObj.browser;
+          pageOnUbersuggest = pageObj.pageOnUbersuggest;
+        } else {
+          await this.makePageScrapableIfNot(pageOnUbersuggest);
+          console.log('page is (or made to be) scrapable');
+        }
+
+        await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
+        console.log('keyword analitics could be loaded');
+        // tslint:disable-next-line:no-var-keyword prefer-const
+        var downloadedFilePath = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
+        console.log(`${downloadedFilePath} => is downloaded`);
+      } catch (e) {
+        console.log('err in try catch 2');
+        console.error(e);
+        const hasRunningBrowser = browser?.close;
+        if (hasRunningBrowser) await browser.close();
+        console.log('due to error browser closed asking for new page');
+        // tslint:disable-next-line:no-var-keyword
+        const pageObj = await this.getScrapablePage();
+        console.log('got new anti captcha page');
+        browser = pageObj.browser;
+        pageOnUbersuggest = pageObj.pageOnUbersuggest;
+        continue;
+      }
+
+      try {
+        await this.saveAnaliticsIntoDbFromCsv(downloadedFilePath, scrapeSession);
+        console.log('keyword analitics data saved into db');
+
+        this.utils.deleteFileSync(downloadedFilePath);
+        console.log(`${downloadedFilePath} => is deleted`);
+      } catch (e) {
+        console.log('err in try catch 3');
+        console.log(e);
+      }
     }
+
+    const hasRunningBrowser = browser?.close;
+    if (hasRunningBrowser) await browser.close();
+    console.log('browser closed');
+
+    scrapeSession.isSuccesful = true;
+    await this.scrapeSessionRepo.save(scrapeSession);
+    console.log('scrape session updated to successfull');
+
+    console.log('scrape finished browser closed');
   }
 
   private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
@@ -177,11 +250,11 @@ export class UbersuggestService {
     } while (!hasPageShownCorrectData && tryCounter < 4);
 
     const pageFailedToShowCorrectData = !hasPageShownCorrectData && tryCounter > 4;
-    if (pageFailedToShowCorrectData) throw new Error('Page didnt load data, that could be downloaded');
+    if (pageFailedToShowCorrectData) throw new Error('Page didnt load keyword analitics data');
   }
 
   private async searchForKeywordOnPage(pageOnUbersuggest: Page, keyword: string): Promise<void> {
-    console.log('searching for keyword');
+    console.log(`searching for keyword: ${keyword}`);
     const { keywordResearchResAppearedSel } = this.config.selectors;
     await this.setKeywResearchInputsValue(pageOnUbersuggest, keyword);
     await this.utils.waitBetween(900, 1500);
@@ -197,7 +270,6 @@ export class UbersuggestService {
 
     // I know this for loop and then the while one are ugly like fuck... but they have made the job done.
     for (let i = 0; i < 3; i++) {
-      console.log('for');
       const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
         pageOnUbersuggest,
         researchKeywordInput,
@@ -210,7 +282,6 @@ export class UbersuggestService {
     }
 
     do {
-      console.log('while');
       const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
         pageOnUbersuggest,
         researchKeywordInput,
@@ -249,7 +320,7 @@ export class UbersuggestService {
   private async downloadKeywAnaliticsCsv(page: Page, keyword: string): Promise<string> {
     console.log('csv download');
     const { downloadsFolder } = this.globalConfig;
-    const downloadsFileName = `ubersuggest_${keyword}.csv`.replace(' ', '_');
+    const downloadsFileName = `ubersuggest_${keyword}.csv`.replace(/\s/g, '_');
 
     const waitForFileDownloadPromise = this.utils.waitToDownloadFile(downloadsFolder, downloadsFileName);
     const clickDownloadBtnPromise = page.evaluate(() => {
@@ -271,15 +342,12 @@ export class UbersuggestService {
     return downloadedFilePath;
   }
 
-  private async saveAnaliticsIntoDbFromCsv(downloadedFilePath: string) {
+  private async saveAnaliticsIntoDbFromCsv(downloadedFilePath: string, scrapeSession: ScrapeSession) {
     const kywAnaliticses: any[] = await csv().fromFile(downloadedFilePath);
     const { keywordsToUpdateInDb, keywordsToSaveIntoDb } = await this.separateKeywordsInAnalitics(kywAnaliticses);
 
-    console.log('new keywords from ubersuggest:');
-    console.log(keywordsToSaveIntoDb);
-
-    await this.createNewKywEntitiesAndSave(keywordsToSaveIntoDb);
-    await this.updateKywEntities(keywordsToUpdateInDb, kywAnaliticses);
+    await this.createNewKywEntitiesAndSave(keywordsToSaveIntoDb, scrapeSession);
+    await this.updateKywEntities(keywordsToUpdateInDb, kywAnaliticses, scrapeSession);
   }
 
   private async separateKeywordsInAnalitics(
@@ -319,7 +387,7 @@ export class UbersuggestService {
     };
   }
 
-  private async createNewKywEntitiesAndSave(kywAnalitics: any[]): Promise<void> {
+  private async createNewKywEntitiesAndSave(kywAnalitics: any[], scrapeSession: ScrapeSession): Promise<void> {
     const keywords = kywAnalitics.map(analiticsObj => {
       const keyword = new Keyword();
 
@@ -329,20 +397,24 @@ export class UbersuggestService {
         ? parseInt(analiticsObj['Search Difficulty'], 10)
         : null;
       keyword.payedDifficulty = analiticsObj['Paid Difficulty'] ? parseInt(analiticsObj['Paid Difficulty'], 10) : null;
-
+      keyword.scrapeSessions = [scrapeSession];
       return keyword;
     });
 
     await this.keywordRepo.save(keywords);
   }
 
-  private async updateKywEntities(keywordsToUpdateInDb: Keyword[], kywAnaliticses: any[]) {
+  private async updateKywEntities(
+    keywordsToUpdateInDb: Keyword[],
+    kywAnaliticses: any[],
+    scrapeSession: ScrapeSession,
+  ) {
     const updatedKeywords = keywordsToUpdateInDb.map(currKeyword => {
       const matchingKywAnalitics = kywAnaliticses.find(currKywAnalitics => {
         return currKeyword.keyword === currKywAnalitics['Keyword'];
       });
 
-      currKeyword.keyword = matchingKywAnalitics['Keyword'] ? matchingKywAnalitics['Keyword'] : null;
+      // currKeyword.keyword = matchingKywAnalitics['Keyword'] ? matchingKywAnalitics['Keyword'] : null;
       currKeyword.searchVolume = matchingKywAnalitics['Search Volume']
         ? parseInt(matchingKywAnalitics['Search Volume'], 10)
         : null;
@@ -353,20 +425,70 @@ export class UbersuggestService {
         ? parseInt(matchingKywAnalitics['Paid Difficulty'], 10)
         : null;
 
+      currKeyword.scrapeSessions = [...currKeyword.scrapeSessions, scrapeSession];
+
       return currKeyword;
     });
 
     await this.keywordRepo.save(updatedKeywords);
   }
 
+  // keyword suggestions are keywords without analitics
   private getKeywordSuggestion(suggestionScrapeId: string) {
-    return this.keywordRepo.findOne({
-      where: {
-        payedDifficulty: null,
-        searchDifficulty: null,
-        searchVolume: null,
-        id: suggestionScrapeId,
-      },
-    });
+    // const kywRelNames = Keyword.getRelationNames();
+
+    return this.keywordRepo
+      .createQueryBuilder('keyword')
+      .innerJoinAndSelect('keyword.scrapeSessions', 'scrapeSessions', 'scrapeSessions.id = :scrapeId', {
+        scrapeId: suggestionScrapeId,
+      })
+      .where('keyword.searchVolume is null')
+      .andWhere('keyword.searchDifficulty is null')
+      .getOne();
+  }
+
+  private async makePageScrapableIfNot(pageOnUbersuggest: Page) {
+    const hasAllSelectorsOnPage = await this.hasAllSelectorsOnPage(pageOnUbersuggest);
+    if (!hasAllSelectorsOnPage) throw new Error('page is broken or not the page we want to scrape');
+
+    const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
+    console.log('is logged in: ' + isLoggedIn);
+    if (!isLoggedIn) {
+      const couldLogIn = await this.tryToLogIn(pageOnUbersuggest);
+      if (!couldLogIn) throw new Error('could not log into ubersuggest');
+      await pageOnUbersuggest.waitFor(2000);
+    }
+
+    const hasCaptchaOnPage = await this.puppeteerUtils.hasCaptchasOnPage(pageOnUbersuggest);
+    console.log('has captcha on page ' + hasCaptchaOnPage);
+    if (hasCaptchaOnPage) {
+      await this.puppeteerUtils.solveCaptchas(pageOnUbersuggest);
+      await this.utils.wait(3000);
+    }
+  }
+
+  private async hasAllSelectorsOnPage(pageOnUbersuggest) {
+    let hasAllSelectorsOnPage = true;
+    const {
+      keywordResearchResAppearedSel,
+      loggedInImgSel,
+      loginWithGoogleBtnSel,
+      researchKeywordInput,
+    } = this.config.selectors;
+
+    const hasKeywordResearchBoxOnPage = (await pageOnUbersuggest.$(researchKeywordInput)) !== null;
+    if (!hasKeywordResearchBoxOnPage) {
+      hasAllSelectorsOnPage = false;
+      console.log(`doenst have selector: ${keywordResearchResAppearedSel} on the page`);
+    }
+
+    const hasLoggedInBtnOnPage = (await pageOnUbersuggest.$(loggedInImgSel)) !== null;
+    const hasLogInBtnOnPage = (await pageOnUbersuggest.$(loginWithGoogleBtnSel)) !== null;
+    if (!(hasLoggedInBtnOnPage || hasLogInBtnOnPage)) {
+      hasAllSelectorsOnPage = false;
+      console.log(`none of the selectors: ${loggedInImgSel} , ${loginWithGoogleBtnSel} are on the page`);
+    }
+
+    return hasAllSelectorsOnPage;
   }
 }

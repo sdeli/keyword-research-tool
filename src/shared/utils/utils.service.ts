@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { ParsedProcessArgsT } from '@shared/shared.types';
 
 @Injectable()
 export class UtilsService {
@@ -12,7 +13,6 @@ export class UtilsService {
 
   waitBetween(min: number = 3000, max: number = 6000): Promise<void> {
     const timeToWait = Math.floor(Math.random() * (max - min) + min);
-    console.log(timeToWait);
     return new Promise(resolve => {
       setTimeout(() => {
         console.log('waited: ' + timeToWait);
@@ -49,16 +49,16 @@ export class UtilsService {
   }
 
   async waitToDownloadFile(folderAbsPath: string, fileNameToWaitFor: string) {
-    console.log(folderAbsPath);
-    console.log(fileNameToWaitFor);
+    console.log(`download folders absolut path: ${folderAbsPath}`);
+    console.log(`files name to wait for: ${fileNameToWaitFor}`);
     return new Promise((resolve, reject) => {
       const watcher = fs.watch(folderAbsPath);
 
       watcher.on('change', (eventType, currFilesName) => {
         console.log(fileNameToWaitFor);
-        console.log(currFilesName);
+        console.log(`to the file has happened something: ${currFilesName}`);
         const isDownloadFile = currFilesName === fileNameToWaitFor;
-        console.log(isDownloadFile);
+        console.log(`is the file downloaded: ${isDownloadFile}`);
         if (isDownloadFile) {
           watcher.close();
           return resolve();
@@ -81,7 +81,7 @@ export class UtilsService {
     }
   }
 
-  async saveScrapeSession(scrapeSessionParams: SaveScrapeSessionParamsI) {
+  saveScrapeSession(scrapeSessionParams: SaveScrapeSessionParamsI): Promise<ScrapeSession> {
     const { scrapeSessionId, keyword, path, err } = scrapeSessionParams;
     let errorJson = null;
 
@@ -91,11 +91,29 @@ export class UtilsService {
     const scrapeSession = new ScrapeSession();
 
     scrapeSession.id = scrapeSessionId;
-    scrapeSession.keyword = keyword;
+    scrapeSession.masterKeyword = keyword;
     scrapeSession.isSuccesful = !err;
     scrapeSession.error = errorJson;
     scrapeSession.path = path;
 
-    await this.scrapeSessionRepo.save(scrapeSession);
+    return this.scrapeSessionRepo.save(scrapeSession);
+  }
+
+  getParsedProcessArgs(): ParsedProcessArgsT {
+    const args: ParsedProcessArgsT = {};
+    args.noName = [];
+
+    process.argv.forEach(currArg => {
+      const isArgWithName = currArg.indexOf('=') > -1;
+
+      if (isArgWithName) {
+        const [key, value] = currArg.split('=');
+        args[key] = value;
+      } else {
+        args.noName.push(currArg);
+      }
+    });
+
+    return args;
   }
 }

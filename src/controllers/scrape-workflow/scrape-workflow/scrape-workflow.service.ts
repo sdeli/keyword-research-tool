@@ -17,7 +17,7 @@ export class ScrapeWorkflowService {
   async analizeKeywordsOfOne(keyword: string) {
     console.log(`analizing keywords for: ${keyword}`);
     const scrapeSuggestionsForOneAndSaveInDbEp = `http://localhost:3000/keyword/suggestions/${keyword}`;
-    // const scrapeAnaliticsForMoreKywsAndUpdateDbEp = 'http://localhost:3000/keyword/analitics/';
+    let scrapeAnaliticsForMoreKywsAndUpdateDbEp = 'localhost:3000/keyword/analitics/session/';
     const currPath = '/scrape-workflow/:keyword';
 
     try {
@@ -28,20 +28,22 @@ export class ScrapeWorkflowService {
       const suggestionsScrapeId: string = await rp.get(scrapeSuggestionsForOneAndSaveInDbEp);
       console.log(`suggestion-scrape id: ${suggestionsScrapeId}`);
 
-      const suggestionScrapeSession = await this.waitUntilSuggestionScrapeFinished(suggestionsScrapeId);
-      console.log('suggestion scrape finished');
+      const suggestionScrapeSession = await this.waitUntilHaveSuggestionsInDb(suggestionsScrapeId);
+      console.log(`suggestions scrape session was succesful: ${suggestionScrapeSession.isSuccesful}`);
 
       scrapeWorflow.scrapeSessions = [suggestionScrapeSession];
       await this.scrapeWorkflowRepo.save(scrapeWorflow);
       console.log('suggestions scrape session added to worflow');
 
-      if (!suggestionScrapeSession.isSuccesful) return false;
-      console.log('suggestions scrape session was succesful');
+      scrapeAnaliticsForMoreKywsAndUpdateDbEp += suggestionsScrapeId;
+      const analiticsScrapeId: string = await rp.get(scrapeAnaliticsForMoreKywsAndUpdateDbEp);
+      console.log(`analitics-scrape id: ${analiticsScrapeId}`);
     } catch (e) {
       console.log(e);
       scrapeWorflow.isSuccesful = false;
       scrapeWorflow.error = e;
       await this.scrapeWorkflowRepo.save(scrapeWorflow);
+      console.log('scrape workflow has been updated with error');
     }
   }
 
@@ -52,16 +54,35 @@ export class ScrapeWorkflowService {
     return this.scrapeWorkflowRepo.save(scrapeWorflow);
   }
 
-  private async waitUntilSuggestionScrapeFinished(suggestionsScrapeId: string) {
-    let i = 0;
-    const maxPollCount = 150;
-    let isSuggestionsScrapeFinished = false;
+  private async waitUntilHaveSuggestionsInDb(suggestionsScrapeId: string) {
+    console.log(
+      `checking if has already keyword suggestions in db for current suggestion scrape session: ${suggestionsScrapeId}`,
+    );
 
-    while (!isSuggestionsScrapeFinished && i < maxPollCount) {
-      const suggestionScrapeSession = await this.getScrapeSession(suggestionsScrapeId);
-      console.log(`is suggestion scrape finished?: ${isSuggestionsScrapeFinished}`);
-      if (suggestionScrapeSession) {
-        isSuggestionsScrapeFinished = true;
+    let i = 0;
+    let hasAlreadySavedkeywSuggestions = false;
+    let didntFindSuggestionsI = 0;
+    let suggestionScrapeSessionIsBroken = false;
+    const maxPollCount = 150;
+
+    while (!hasAlreadySavedkeywSuggestions && !suggestionScrapeSessionIsBroken && i < maxPollCount) {
+      const suggestionScrapeSession = await this.getScrapeSessionWithSuggestions(suggestionsScrapeId);
+
+      if (suggestionScrapeSessionIsBroken) {
+        console.log('suggestion scrape session is not found');
+        throw new Error('suggestion scrape session is not found');
+      }
+
+      if (!suggestionScrapeSession) {
+        console.log(`didnt find scrape session: ${didntFindSuggestionsI}`);
+        didntFindSuggestionsI++;
+        suggestionScrapeSessionIsBroken = didntFindSuggestionsI > 25;
+        continue;
+      }
+
+      hasAlreadySavedkeywSuggestions = suggestionScrapeSession.keywords.length > 0;
+      console.log(`has already saved keyword suggestions: ${hasAlreadySavedkeywSuggestions}`);
+      if (hasAlreadySavedkeywSuggestions) {
         return suggestionScrapeSession;
       }
 
@@ -70,7 +91,12 @@ export class ScrapeWorkflowService {
     }
   }
 
-  private async getScrapeSession(scrapeSessionId: string) {
-    return this.scrapeSessionRepo.findOne({ where: { id: scrapeSessionId } });
+  private async getScrapeSessionWithSuggestions(scrapeSessionId: string) {
+    // sSRelnames => scrapeSessionRelNames
+    const sSRelnames = ScrapeSession.getRelationNames();
+    return this.scrapeSessionRepo.findOne({
+      relations: [sSRelnames.keywords],
+      where: { id: scrapeSessionId },
+    });
   }
 }

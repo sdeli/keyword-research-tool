@@ -1,4 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, OneToMany, UpdateDateColumn } from 'typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 
 @Entity()
@@ -13,7 +13,7 @@ export class ScrapeWorkflow {
   isSuccesful: boolean;
 
   @Column({ type: 'json', nullable: true })
-  error: string;
+  error: any;
 
   @OneToMany(
     type => ScrapeSession,
@@ -24,4 +24,9 @@ export class ScrapeWorkflow {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn({
+    nullable: false,
+  })
+  updateAt: Date;
 }

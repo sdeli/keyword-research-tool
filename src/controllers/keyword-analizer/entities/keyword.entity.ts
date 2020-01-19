@@ -1,6 +1,15 @@
 import { GoogleSerpLinks } from './google-serp.entity';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToMany, ManyToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  ManyToMany,
+  UpdateDateColumn,
+  JoinTable,
+} from 'typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import { EntityRelationNames } from '@keyword-analizer/keyword-analizer.interfaces';
 
 @Entity()
 export class Keyword {
@@ -33,12 +42,36 @@ export class Keyword {
   })
   googleSerpLinks: GoogleSerpLinks[];
 
-  @ManyToOne(
-    type => ScrapeSession,
-    scrapeSession => scrapeSession.id,
-  )
-  scrapeSession: ScrapeSession;
+  @ManyToMany(type => ScrapeSession, {
+    eager: true,
+  })
+  @JoinTable()
+  scrapeSessions: ScrapeSession[];
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn({
+    nullable: false,
+  })
+  updateAt: Date;
+
+  static getRelationNames(): EntityRelationNames {
+    const relationNames: EntityRelationNames = {};
+
+    const sampleScrapeSession = new ScrapeSession();
+    const keyw = new Keyword();
+
+    keyw.scrapeSessions = [sampleScrapeSession];
+
+    for (const relationsKeyName in keyw) {
+      if (keyw.hasOwnProperty(relationsKeyName)) {
+        if (keyw[relationsKeyName] === sampleScrapeSession) {
+          relationNames[relationsKeyName] = relationsKeyName;
+        }
+      }
+    }
+
+    return relationNames;
+  }
 }

@@ -50,10 +50,11 @@ export class PuppeteerUtilsService {
     );
 
     const pupeteerExtraOpts = {
-      headless,
+      // headless,
       slowMo: 50,
       userDataDir,
       executablePath: '/usr/bin/google-chrome-stable',
+      args: ['--disable-gpu', '--disable-software-rasterizer'],
     };
 
     const browser = await puppeteerExtra.launch(pupeteerExtraOpts);

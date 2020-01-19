@@ -3,19 +3,18 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { KeywordAnalizerModule } from '@keyword-analizer/keyword-analizer.module';
 import { AppService } from './app.service';
-import { UtilsModule } from '@utils/utils.module';
-import { PuppeteerUtilsModule } from '@puppeteer-utils/puppeteer-utils.module';
-import { ScrapeWorkflowModule } from './controllers/scrape-workflow/scrape-workflow.module';
+import { ScrapeWorkflowModule } from '@scrape-workflow/scrape-workflow.module';
+import { UtilsModule } from '@shared/utils';
 
 @Module({
   imports: [
     KeywordAnalizerModule,
     TypeOrmModule.forRoot({ keepConnectionAlive: true }),
-    UtilsModule,
-    PuppeteerUtilsModule,
     ScrapeWorkflowModule,
+    UtilsModule,
   ],
   controllers: [],
   providers: [AppService],
+  exports: [UtilsModule],
 })
 export class AppModule {}

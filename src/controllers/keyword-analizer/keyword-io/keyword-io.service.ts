@@ -12,6 +12,7 @@ import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.type
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 
 @Injectable()
 export class KeywordIoService {
@@ -23,7 +24,7 @@ export class KeywordIoService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
-  async scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
+  async scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId: string, keyword: string): Promise<void> {
     console.log(`getting suggestions for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
       scrapeSessionId,
@@ -32,6 +33,9 @@ export class KeywordIoService {
     };
 
     try {
+      const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
+      console.log('scrape session saved');
+
       const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo();
       console.log('got anti captcah page on keyword.io');
 
@@ -49,19 +53,21 @@ export class KeywordIoService {
 
       await browser.close();
 
-      await this.saveSuggestionsIntoDbFromCsv(downloadedFilePath, keyword);
+      await this.saveSuggestionsIntoDbFromCsv(downloadedFilePath, keyword, scrapeSession);
       console.log('keyword suggestions saved into db');
 
       this.utils.deleteFileSync(downloadedFilePath);
       console.log(`${downloadedFilePath} => is deleted`);
 
+      saveScrapeSessionParams.isSuccesful = true;
       await this.utils.saveScrapeSession(saveScrapeSessionParams);
-      console.log('scrape session saved');
+      console.log('scrape session updated to be succesfuls');
     } catch (e) {
       console.error(e);
+      saveScrapeSessionParams.isSuccesful = false;
       saveScrapeSessionParams.err = e;
       await this.utils.saveScrapeSession(saveScrapeSessionParams);
-      console.log('scrape session saved with error');
+      console.log('scrape session updated with error');
     }
   }
 
@@ -137,19 +143,27 @@ export class KeywordIoService {
     return downloadedCsvPath;
   }
 
-  private async saveSuggestionsIntoDbFromCsv(downloadedFilePath: string, keyword: string) {
+  private async saveSuggestionsIntoDbFromCsv(
+    downloadedFilePath: string,
+    keyword: string,
+    scrapeSession: ScrapeSession,
+  ) {
     const kywSuggestions: any[] = await csv({ noheader: true }).fromFile(downloadedFilePath);
-    const keywordEntities = await this.parseSuggestionsIntoKeywEntities(kywSuggestions, keyword);
+    const keywordEntities = await this.parseSuggestionsIntoKeywEntities(kywSuggestions, keyword, scrapeSession);
 
     await this.keywordRepo.save(keywordEntities);
     console.log('keyword suggestions have been saved to db');
   }
 
-  private async parseSuggestionsIntoKeywEntities(kywSuggestions: any[], keyword: string): Promise<Keyword[]> {
+  private async parseSuggestionsIntoKeywEntities(
+    kywSuggestions: any[],
+    keyword: string,
+    scrapeSession: ScrapeSession,
+  ): Promise<Keyword[]> {
     const keywordEntities = kywSuggestions.map(currKeywSuggestion => {
       const keywordEntity = new Keyword();
       keywordEntity.keyword = currKeywSuggestion['field1'];
-
+      keywordEntity.scrapeSessions = [scrapeSession];
       return keywordEntity;
     });
 

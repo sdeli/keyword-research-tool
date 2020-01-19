@@ -20,7 +20,9 @@
       "@assets/*": ["src/assets/*"],
       "@config": ["src/config/index"],
       "@shared/*": ["src/shared/*"],
-      "@puppeteer-utils/*": ["src/shared/puppeteer-utils/*"]
+      "@puppeteer-utils/*": ["src/shared/puppeteer-utils/*"],
+      "@process-queue/*": ["src/shared/process-queue/*"],
+        "@app-module": ["src/app.module"]
     }
   },
   "exclude": ["node_modules", "dist"],
