@@ -135,7 +135,9 @@ export class ScrapeWorkflowService {
       if (!hasKeywsWithoutAnalitics) return;
 
       scrapeWorflow = await this.scrapeWorkflowRepo.findOne({ id: scrapeWorflow.id });
-      const runningScrapersCount = this.getRunningAnaliticsScrapersCount(scrapeWorflow.scrapeSessions);
+      const { runningScrapersCount, stuckScraperIds } = await this.getRunningAnaliticsScrapersCount(
+        scrapeWorflow.scrapeSessions,
+      );
       console.log(`runningScrapersCount: ${runningScrapersCount}`);
 
       const justStartedOrSomeScrapersHaveDied = runningScrapersCount < concurrencyCount;
@@ -167,11 +169,34 @@ export class ScrapeWorkflowService {
     return Boolean(keyword);
   }
 
-  private getRunningAnaliticsScrapersCount(scrapeSessions: ScrapeSession[]): number {
+  private async getRunningAnaliticsScrapersCount(
+    scrapeSessions: ScrapeSession[],
+  ): Promise<{
+    runningScrapersCount: number;
+    stuckScraperIds: string[];
+  }> {
     const analiticsScrapers = scrapeSessions.filter(scrapeSession => scrapeSession.path === ANALTICS_SCRAPER_PATH);
     const runningAnaliticsScrapers = analiticsScrapers.filter(scrapeSession => !scrapeSession.error);
+    const runningAnaliticsScrapersSet = new Set(runningAnaliticsScrapers);
+    const stuckScraperIds: string[] = [];
 
-    return runningAnaliticsScrapers.length;
+    for (const [i, analiticsScraper] of runningAnaliticsScrapers.entries()) {
+      const isScraperStuck = await this.isScraperStuck(analiticsScraper.id);
+      console.log(`scraper with the if id: ${isScraperStuck} is stuck: ${isScraperStuck}`);
+      if (!isScraperStuck) continue;
+
+      runningAnaliticsScrapersSet.delete(analiticsScraper);
+      stuckScraperIds.push(analiticsScraper.id);
+
+      console.log(`running scraper count: ${runningAnaliticsScrapersSet.size} ${i}`);
+      console.log('stuckScraperIds:');
+      console.log(stuckScraperIds);
+    }
+
+    return {
+      runningScrapersCount: runningAnaliticsScrapersSet.size,
+      stuckScraperIds,
+    };
   }
 
   private async launchAnaliticsScrapers(
@@ -226,5 +251,33 @@ export class ScrapeWorkflowService {
     }
 
     return false;
+  }
+
+  async isScraperStuck(analiticsSessionId: string): Promise<boolean> {
+    const now = new Date();
+    const fiveMintues = 1000 * 60 * 5 + 1000 * 60 * 60;
+    const fiveMinutesBefore = new Date(now - fiveMintues);
+
+    const { keywords, createdAt } = await this.scrapeSessionRepo.findOne({
+      relations: ['keywords'],
+      where: {
+        id: analiticsSessionId,
+      },
+    });
+
+    const hasNotScrapedAnyKeywordsSoFar = keywords.length === 0;
+    if (hasNotScrapedAnyKeywordsSoFar) {
+      const isScraperStuck = createdAt < fiveMinutesBefore;
+      return isScraperStuck;
+    }
+
+    const keywordsOfScraperFromLatestToOldest = keywords.sort((a, b) => {
+      return b.updateAt - a.updateAt;
+    });
+
+    const newestKeyword = keywordsOfScraperFromLatestToOldest[0];
+
+    const isScraperStuck = newestKeyword.updateAt < fiveMinutesBefore;
+    return isScraperStuck;
   }
 }

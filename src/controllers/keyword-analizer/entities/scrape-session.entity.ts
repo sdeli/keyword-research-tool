@@ -20,7 +20,7 @@ export class ScrapeSession {
   @Column({ type: 'boolean', nullable: true })
   isSuccesful: boolean;
 
-  @Column({ type: 'json', nullable: true })
+  @Column({ type: 'jsonb', nullable: true })
   error: any;
 
   @ManyToOne(

@@ -1,7 +1,7 @@
 const { CAPTCHA_2D_TOKEN } = process.env;
 
 const globalConfigs = {
-  headless: false,
+  headless: true,
   captcha2dToken: CAPTCHA_2D_TOKEN,
   captcha2dId: '2captcha',
   userAgent:

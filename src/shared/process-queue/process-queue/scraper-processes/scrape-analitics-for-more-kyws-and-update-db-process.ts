@@ -12,15 +12,16 @@ async function scrapeAnaliticsForMoreKywsAndUpdateDb() {
   try {
     process.send('new process for scrapeAnaliticsForMoreKywsAndUpdateDb started');
     const app = await NestFactory.create(AppModule);
-    const { analiticsScrapeSessionId, suggestionsScrapeId } = getUbersuggestAnaliticsParams(app);
+    var { analiticsScrapeSessionId, suggestionsScrapeId } = getUbersuggestAnaliticsParams(app);
 
-    const ubersuggestService: UbersuggestService = app.get('UbersuggestService');
+    var ubersuggestService: UbersuggestService = app.get('UbersuggestService');
     process.send('scrapeAnaliticsForMoreKywsAndUpdateDb starts');
     await ubersuggestService.scrapeAnaliticsForMoreKywsAndUpdateDb(analiticsScrapeSessionId, suggestionsScrapeId);
 
     process.send('new process scrapeAnaliticsForMoreKywsAndUpdateDb finished');
   } catch (err) {
-    console.log('error propagated to main level');
+    console.log('error propagated to main level, update scraper with error, closing process');
+    await ubersuggestService.updateAnaliticsScrapeSessionWithError(analiticsScrapeSessionId, err);
     throw new Error(err);
   }
 }

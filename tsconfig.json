@@ -12,7 +12,8 @@
     "incremental": true,
     "inlineSourceMap": true,
     "preserveSymlinks": true,
-      "esModuleInterop": true,
+    "esModuleInterop": true,
+    "noEmit": false,
     "paths": {
       "@keyword-analizer/*": ["src/controllers/keyword-analizer/*"],
       "@scrape-workflow/*": ["src/controllers/scrape-workflow/*"],
@@ -22,7 +23,7 @@
       "@shared/*": ["src/shared/*"],
       "@puppeteer-utils/*": ["src/shared/puppeteer-utils/*"],
       "@process-queue/*": ["src/shared/process-queue/*"],
-        "@app-module": ["src/app.module"]
+      "@app-module": ["src/app.module"]
     }
   },
   "exclude": ["node_modules", "dist"],

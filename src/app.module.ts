@@ -8,10 +8,10 @@ import { UtilsModule } from '@shared/utils';
 
 @Module({
   imports: [
-    KeywordAnalizerModule,
     TypeOrmModule.forRoot({ keepConnectionAlive: true }),
-    ScrapeWorkflowModule,
     UtilsModule,
+    ScrapeWorkflowModule,
+    KeywordAnalizerModule,
   ],
   controllers: [],
   providers: [AppService],

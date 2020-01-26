@@ -1,9 +1,15 @@
 import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ScrapeWorkflowService } from './scrape-workflow/scrape-workflow.service';
+import { Repository } from 'typeorm';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Controller('scrape-workflow')
 export class ScrapeWorkflowController {
-  constructor(private readonly scrapeManagerService: ScrapeWorkflowService) {}
+  constructor(
+    @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
+    private readonly scrapeManagerService: ScrapeWorkflowService,
+  ) {}
 
   @Get()
   @Header('content-type', 'text/plain')
@@ -36,6 +42,6 @@ export class ScrapeWorkflowController {
 
   @Get('test')
   async test() {
-    // await this.scrapeManagerService.hasKeywSuggestionsWithoutAnalitics();
+    await this.scrapeManagerService.isScraperStuck('69052d50-405b-11ea-bc04-ef6420fbb3db');
   }
 }

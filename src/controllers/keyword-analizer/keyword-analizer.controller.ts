@@ -8,6 +8,7 @@ import { UbersuggestAnaliticsParams } from '@process-queue/process-queue.types';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
+import { rejects } from 'assert';
 
 @Controller('keyword')
 export class KeywordAnalizerController {
@@ -75,11 +76,5 @@ export class KeywordAnalizerController {
   }
 
   @Get('test/')
-  async test() {
-    const err = await this.ubersuggestService.updateAnaliticsScrapeSessionWithError(
-      'cc86ade0-3fcf-11ea-b570-bb22111bf080',
-      new Error('faszkivan'),
-    );
-    console.log(err);
-  }
+  async test() {}
 }

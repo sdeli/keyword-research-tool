@@ -29,7 +29,10 @@ export class UbersuggestService {
     const scrapeSession = await this.scrapeSessionRepo.findOne({ id: analiticsScrapeSessionId });
     scrapeSession.error = error;
     return this.scrapeSessionRepo.save(scrapeSession);
-    // return this.scrapeSessionRepo.update({ error: error as any, isSuccesful: false }, { id: analiticsScrapeSessionId });
+    // return this.scrapeSessionRepo.update(
+    //   { error: 'faszom' as any, isSuccesful: false },
+    //   { id: analiticsScrapeSessionId },
+    // );
   }
 
   async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
@@ -289,7 +292,7 @@ export class UbersuggestService {
         researchKeywordInput,
       );
 
-      console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
+      // console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
       if (researchKywInputsValue !== keyword) {
         await this.puppeteerUtils.tryClearInputFieldAndType(pageOnUbersuggest, researchKeywordInput, keyword);
       }
@@ -301,7 +304,7 @@ export class UbersuggestService {
         researchKeywordInput,
       );
 
-      console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
+      // console.log('input fields value is correctly set ' + (researchKywInputsValue === keyword));
       if (researchKywInputsValue === keyword) succesFullyWroteIntoInputField = true;
       else {
         tryCounter++;
@@ -312,7 +315,7 @@ export class UbersuggestService {
     } while (!succesFullyWroteIntoInputField && tryCounter < 15);
 
     if (!succesFullyWroteIntoInputField) throw new Error('couldnt write into input field');
-    // else console.log('succesfully wrote keyword into input field');
+    else console.log('succesfully wrote keyword into input field');
   }
 
   private async clickStartKeywordResearchBtn(pageOnUbersuggest: Page) {
@@ -467,6 +470,7 @@ export class UbersuggestService {
         : null;
 
       currKeyword.scrapeSessions = [...currKeyword.scrapeSessions, scrapeSession];
+      currKeyword.inProcess = false;
 
       return currKeyword;
     });
@@ -485,10 +489,14 @@ export class UbersuggestService {
       .andWhere('keyword.searchDifficulty is null')
       .andWhere('keyword.error is null')
       .andWhere('keyword.inProcess = false')
+      .skip(0)
       .getOne();
 
-    keyword.inProcess = true;
-    await this.keywordRepo.save(keyword);
+    if (keyword) {
+      keyword.inProcess = true;
+      await this.keywordRepo.save(keyword);
+    }
+
     return keyword;
   }
 

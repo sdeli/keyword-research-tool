@@ -50,7 +50,7 @@ export class PuppeteerUtilsService {
     );
 
     const pupeteerExtraOpts = {
-      // headless,
+      headless,
       slowMo: 50,
       userDataDir,
       executablePath: '/usr/bin/google-chrome-stable',
