@@ -28,7 +28,6 @@ export class ProcessQueueService {
     if (is) {
       return scraperParams.analiticsScrapeSessionId;
     }
-    console.log(1);
   }
 
   private isAlreadyRegistered(uuid: string) {

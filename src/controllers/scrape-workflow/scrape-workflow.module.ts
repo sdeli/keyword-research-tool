@@ -5,9 +5,10 @@ import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity'
 import { UtilsModule } from '@shared/utils';
 import { ScrapeWorkflowController } from '@scrape-workflow/scrape-workflow.controller';
 import { ScrapeWorkflow } from '@scrape-workflow/entities/scrape-workflow.entity';
+import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ScrapeWorkflow, ScrapeSession]), UtilsModule],
+  imports: [TypeOrmModule.forFeature([ScrapeWorkflow, ScrapeSession, Keyword]), UtilsModule],
   providers: [ScrapeWorkflowService],
   controllers: [ScrapeWorkflowController],
 })

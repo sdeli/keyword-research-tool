@@ -67,15 +67,19 @@ export class KeywordAnalizerController {
       suggestionsScrapeId,
     });
 
-    console.log('analitics conf ===============');
+    console.log('starting new analitics robot with conf:');
     console.log(analiticsConf);
     this.processQueueService.register(analiticsConf);
 
     return analiticsConf.analiticsScrapeSessionId;
   }
 
-  @Get('test/:session')
-  async test(@Param('session') suggestionsScrapeId: string) {
-    await this.ubersuggestService.updateKeywordToErr('fasz', 'hajszárító', suggestionsScrapeId);
+  @Get('test/')
+  async test() {
+    const err = await this.ubersuggestService.updateAnaliticsScrapeSessionWithError(
+      'cc86ade0-3fcf-11ea-b570-bb22111bf080',
+      new Error('faszkivan'),
+    );
+    console.log(err);
   }
 }

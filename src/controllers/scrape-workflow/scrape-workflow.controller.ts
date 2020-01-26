@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query } from '@nestjs/common';
 import { ScrapeWorkflowService } from './scrape-workflow/scrape-workflow.service';
 
 @Controller('scrape-workflow')
@@ -26,10 +26,16 @@ export class ScrapeWorkflowController {
   `;
   }
 
-  @Get(':keyword')
-  analizeKeywordsOfOne(@Param('keyword') keyword: string) {
-    this.scrapeManagerService.analizeKeywordsOfOne(keyword).catch(e => {
+  @Get('one')
+  analizeKeywordsOfOne(@Query('keyword') keyword: string, @Query('concurrency') concurrency: string = '2') {
+    const concurrencyNum = parseInt(concurrency);
+    this.scrapeManagerService.analizeKeywordsOfOne(keyword, concurrencyNum).catch(e => {
       console.error(e);
     });
+  }
+
+  @Get('test')
+  async test() {
+    // await this.scrapeManagerService.hasKeywSuggestionsWithoutAnalitics();
   }
 }

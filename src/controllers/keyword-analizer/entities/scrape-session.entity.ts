@@ -29,7 +29,10 @@ export class ScrapeSession {
   )
   scrapeWorkflow: ScrapeWorkflow;
 
-  @ManyToMany(type => Keyword)
+  @ManyToMany(
+    type => Keyword,
+    keyword => keyword.scrapeSessions,
+  )
   keywords: Keyword[];
 
   @CreateDateColumn()

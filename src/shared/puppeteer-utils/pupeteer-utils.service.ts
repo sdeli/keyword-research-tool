@@ -93,7 +93,6 @@ export class PuppeteerUtilsService {
 
   async getInputFieldsValue(page: Page, inputFieldSel: string) {
     return await page.evaluate(inputFieldSel => {
-      console.log(document.querySelector(inputFieldSel).value);
       return document.querySelector(inputFieldSel).value;
     }, inputFieldSel);
   }

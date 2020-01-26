@@ -171,8 +171,6 @@ export class PreparePageForDetection {
   private async passDimensionsTest(page: Page) {
     const screenWidth = this.getRandomScreenWidth();
     const screenHeigth = this.getRandomScreenHeight();
-    console.log(screenWidth);
-    console.log(screenHeigth);
     await page.evaluateOnNewDocument(
       (screenWidth, screenHeigth) => {
         Object.defineProperty(window, 'innerWidth', { value: screenWidth });

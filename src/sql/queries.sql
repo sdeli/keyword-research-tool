@@ -1,39 +1,76 @@
-delete from keyword;
+DELETE FROM
+    keyword;
 
-select * from keyword;
-select * from keyword offset 200;
+SELECT
+    *
+FROM
+    keyword;
 
-select
+SELECT
+    *
+FROM
+    keyword OFFSET 200;
+
+SELECT
     count(*)
-from
-    keyword k where keyword like '%gorilla%';
+FROM
+    keyword k
+WHERE
+    keyword LIKE '%gorilla%';
 
-select
+SELECT
     count(*)
-from keyword;`
+FROM
+    keyword;
 
-select
+SELECT
     count(*)
-from keyword where keyword like '%atom%';
+FROM
+    keyword
+WHERE
+    keyword LIKE '%atom%';
 
-select * from keyword where keyword in(
---    'majom rágóka',
-    'majomparádé2',
-    'majomkenyérfa2',
-    'majomparádé2',
-    'majomkenyér',
-    'majomfa',
-    'majom fajták'
+SELECT
+    *
+FROM
+    keyword
+WHERE
+    keyword IN(
+        --    'majom rágóka',
+        'majomparádé2',
+        'majomkenyérfa2',
+        'majomparádé2',
+        'majomkenyér',
+        'majomfa',
+        'majom fajták'
     );
 
-select * from keyword where "searchVolume" is not null;
+SELECT
+    *
+FROM
+    keyword
+WHERE
+    "searchVolume" IS NOT NULL;
 
-select * from scrape_session;
-select * from scrape_workflow;
+SELECT
+    *
+FROM
+    scrape_session;
 
-select
+SELECT
+    *
+FROM
+    scrape_workflow;
+
+SELECT
     k."scrapeSessionId"
-from
+FROM
     keyword k;
 
-select count(*) from keyword where "scrapeSessionId"='753be610-355a-11ea-92b4-01818489fea5' and "searchVolume" is not null;
+SELECT
+    count(*)
+FROM
+    keyword
+WHERE
+    "scrapeSessionId" = '753be610-355a-11ea-92b4-01818489fea5'
+    AND "searchVolume" IS NOT NULL;

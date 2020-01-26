@@ -25,6 +25,13 @@ export class UbersuggestService {
     @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
   ) {}
 
+  async updateAnaliticsScrapeSessionWithError(analiticsScrapeSessionId: string, error: Error) {
+    const scrapeSession = await this.scrapeSessionRepo.findOne({ id: analiticsScrapeSessionId });
+    scrapeSession.error = error;
+    return this.scrapeSessionRepo.save(scrapeSession);
+    // return this.scrapeSessionRepo.update({ error: error as any, isSuccesful: false }, { id: analiticsScrapeSessionId });
+  }
+
   async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
     console.log(`getting analitics for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
@@ -231,7 +238,7 @@ export class UbersuggestService {
       }
     } while (!successfullyLoggedIn && loginTriesCounter < 10);
 
-    console.log('returning ' + successfullyLoggedIn);
+    console.log('logged in');
     return successfullyLoggedIn;
   }
 
@@ -305,11 +312,10 @@ export class UbersuggestService {
     } while (!succesFullyWroteIntoInputField && tryCounter < 15);
 
     if (!succesFullyWroteIntoInputField) throw new Error('couldnt write into input field');
-    else console.log('while loop has allowed to click on kyw research btn');
+    // else console.log('succesfully wrote keyword into input field');
   }
 
   private async clickStartKeywordResearchBtn(pageOnUbersuggest: Page) {
-    console.log('clickint start btn');
     const allButtonHandles = await pageOnUbersuggest.$$('button');
     let startKeywordResBtn;
 
@@ -469,8 +475,8 @@ export class UbersuggestService {
   }
 
   // keyword suggestions are keywords without analitics
-  private getKeywordSuggestion(suggestionScrapeId: string) {
-    return this.keywordRepo
+  async getKeywordSuggestion(suggestionScrapeId: string): Promise<Keyword> {
+    const keyword = await this.keywordRepo
       .createQueryBuilder('keyword')
       .innerJoinAndSelect('keyword.scrapeSessions', 'scrapeSessions', 'scrapeSessions.id = :scrapeId', {
         scrapeId: suggestionScrapeId,
@@ -478,7 +484,12 @@ export class UbersuggestService {
       .where('keyword.searchVolume is null')
       .andWhere('keyword.searchDifficulty is null')
       .andWhere('keyword.error is null')
+      .andWhere('keyword.inProcess = false')
       .getOne();
+
+    keyword.inProcess = true;
+    await this.keywordRepo.save(keyword);
+    return keyword;
   }
 
   private async makePageScrapableIfNot(pageOnUbersuggest: Page) {

@@ -42,11 +42,21 @@ export class Keyword {
   })
   googleSerpLinks: GoogleSerpLinks[];
 
-  @ManyToMany(type => ScrapeSession, {
-    eager: true,
-  })
+  @ManyToMany(
+    type => ScrapeSession,
+    scrapeSession => scrapeSession.keywords,
+    {
+      eager: true,
+    },
+  )
   @JoinTable()
   scrapeSessions: ScrapeSession[];
+
+  @Column({
+    default: false,
+    nullable: true,
+  })
+  inProcess: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

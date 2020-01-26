@@ -45,7 +45,8 @@ export class KeywordIoService {
       const hasFoundKeywordSuggestions = await this.hasFoundKeywordsToDownload(pageOnKwIo);
       if (!hasFoundKeywordSuggestions) {
         await browser.close();
-        return console.log('no suggestions found');
+        console.log('no suggestions found');
+        return;
       } else console.log('found suggestions');
 
       const downloadedFilePath = await this.downloadKywSuggestionsCsvFromKywIo(pageOnKwIo, keyword);
