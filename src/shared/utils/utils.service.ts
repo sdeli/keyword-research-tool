@@ -4,12 +4,19 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
-import { SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { SaveScrapeSessionParamsI, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
 import { ParsedProcessArgsT } from '@shared/shared.types';
 
 @Injectable()
 export class UtilsService {
   constructor(@InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>) {}
+
+  createStringifyableError(error: Error): StringifyAbleError {
+    return {
+      message: error.message,
+      stack: error.stack,
+    };
+  }
 
   waitBetween(min: number = 3000, max: number = 6000): Promise<void> {
     const timeToWait = Math.floor(Math.random() * (max - min) + min);

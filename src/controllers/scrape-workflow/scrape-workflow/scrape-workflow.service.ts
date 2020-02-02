@@ -256,7 +256,7 @@ export class ScrapeWorkflowService {
   async isScraperStuck(analiticsSessionId: string): Promise<boolean> {
     const now = new Date();
     const fiveMintues = 1000 * 60 * 5 + 1000 * 60 * 60;
-    const fiveMinutesBefore = new Date(now - fiveMintues);
+    const fiveMinutesBefore = new Date(now.getTime() - fiveMintues);
 
     const { keywords, createdAt } = await this.scrapeSessionRepo.findOne({
       relations: ['keywords'],
@@ -272,7 +272,7 @@ export class ScrapeWorkflowService {
     }
 
     const keywordsOfScraperFromLatestToOldest = keywords.sort((a, b) => {
-      return b.updateAt - a.updateAt;
+      return b.updateAt.getTime() - a.updateAt.getTime();
     });
 
     const newestKeyword = keywordsOfScraperFromLatestToOldest[0];

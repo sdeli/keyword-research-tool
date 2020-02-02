@@ -1,3 +1,8 @@
+export interface StringifyAbleError {
+  message: string;
+  stack: string;
+}
+
 export interface KeywordIoConfigI {
   url: string;
   domain: string;

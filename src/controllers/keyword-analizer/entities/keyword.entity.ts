@@ -9,7 +9,7 @@ import {
   JoinTable,
 } from 'typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
-import { EntityRelationNames } from '@keyword-analizer/keyword-analizer.interfaces';
+import { EntityRelationNames, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
 
 @Entity()
 export class Keyword {
@@ -62,7 +62,7 @@ export class Keyword {
   createdAt: Date;
 
   @Column({ type: 'jsonb', nullable: true })
-  error: any;
+  error: StringifyAbleError | StringifyAbleError[];
 
   @UpdateDateColumn({
     nullable: false,

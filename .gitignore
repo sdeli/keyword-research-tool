@@ -40,3 +40,5 @@ lerna-debug.log*
 !.vscode/launch.json
 !.vscode/extensions.json
 src/controllers/keyword-analizer/keyword-io/asd
+
+.history

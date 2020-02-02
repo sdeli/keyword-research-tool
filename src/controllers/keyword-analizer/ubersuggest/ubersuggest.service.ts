@@ -27,7 +27,7 @@ export class UbersuggestService {
 
   async updateAnaliticsScrapeSessionWithError(analiticsScrapeSessionId: string, error: Error) {
     const scrapeSession = await this.scrapeSessionRepo.findOne({ id: analiticsScrapeSessionId });
-    scrapeSession.error = error;
+    scrapeSession.error = this.utils.createStringifyableError(error);
     return this.scrapeSessionRepo.save(scrapeSession);
     // return this.scrapeSessionRepo.update(
     //   { error: 'faszom' as any, isSuccesful: false },
@@ -93,6 +93,7 @@ export class UbersuggestService {
     let pageOnUbersuggest: Page;
     let keyword: string;
     let downloadedKeywordsFilePath: string;
+    let consecutiveErrorsCount = 0;
 
     while (hasKeywordsInDbWithoutAnalitics) {
       try {
@@ -132,17 +133,20 @@ export class UbersuggestService {
         }
 
         downloadedKeywordsFilePath = fileToDownloadPath;
+        consecutiveErrorsCount = 0;
       } catch (err) {
         console.log('err in try catch 2');
         console.error(err);
         await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
         console.log(`keyword: ${keyword} updated to include err`);
 
-        const hasRunningBrowser = browser?.close;
-        if (hasRunningBrowser) await browser.close();
-        pageOnUbersuggest = null;
+        consecutiveErrorsCount++;
+        const errorOccursInfinitely = consecutiveErrorsCount > 3;
+        if (errorOccursInfinitely) {
+          console.log('due to consecutive errors process closed');
+          throw new Error(err);
+        }
 
-        console.log('due to error browser closed');
         continue;
       }
 
@@ -152,9 +156,12 @@ export class UbersuggestService {
 
         this.utils.deleteFileSync(downloadedKeywordsFilePath);
         console.log(`${downloadedKeywordsFilePath} => is deleted`);
-      } catch (e) {
+      } catch (err) {
         console.log('err in try catch 3');
-        console.log(e);
+        console.log(err);
+
+        await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
+        console.log(`keyword: ${keyword} updated to include err`);
       }
     }
 
@@ -383,7 +390,7 @@ export class UbersuggestService {
       ],
     });
 
-    matchingKywEntity.error = err;
+    matchingKywEntity.error = this.utils.createStringifyableError(err);
     await this.keywordRepo.save(matchingKywEntity);
   }
 

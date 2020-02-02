@@ -1,6 +1,6 @@
 import { Entity, Column, CreateDateColumn, ManyToOne, PrimaryColumn, UpdateDateColumn, ManyToMany } from 'typeorm';
 import { ScrapeWorkflow } from '@scrape-workflow/entities/scrape-workflow.entity';
-import { EntityRelationNames } from '@keyword-analizer/keyword-analizer.interfaces';
+import { EntityRelationNames, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 
 @Entity()
@@ -21,7 +21,7 @@ export class ScrapeSession {
   isSuccesful: boolean;
 
   @Column({ type: 'jsonb', nullable: true })
-  error: any;
+  error: StringifyAbleError | StringifyAbleError[];
 
   @ManyToOne(
     type => ScrapeWorkflow,
