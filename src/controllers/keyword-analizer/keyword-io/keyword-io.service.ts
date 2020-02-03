@@ -45,7 +45,9 @@ export class KeywordIoService {
       const hasFoundKeywordSuggestions = await this.hasFoundKeywordsToDownload(pageOnKwIo);
       if (!hasFoundKeywordSuggestions) {
         await browser.close();
-        console.log('no suggestions found');
+        saveScrapeSessionParams.isSuccesful = true;
+        await this.utils.saveScrapeSession(saveScrapeSessionParams);
+        console.log('no suggestions found, session saved to be succesfuls');
         return;
       } else console.log('found suggestions');
 
@@ -63,11 +65,9 @@ export class KeywordIoService {
       saveScrapeSessionParams.isSuccesful = true;
       await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session updated to be succesfuls');
-    } catch (e) {
-      console.error(e);
-      saveScrapeSessionParams.isSuccesful = false;
-      saveScrapeSessionParams.err = e;
-      await this.utils.saveScrapeSession(saveScrapeSessionParams);
+    } catch (err) {
+      console.error(err);
+      await this.utils.updateScrapeSessionWithError(scrapeSessionId, err);
       console.log('scrape session updated with error');
     }
   }

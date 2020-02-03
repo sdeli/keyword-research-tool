@@ -83,17 +83,17 @@ export class ScrapeWorkflowService {
     while (!hasAlreadySavedkeywSuggestions && !suggestionScrapeSessionIsBroken && i < maxPollCount) {
       const suggestionScrapeSession = await this.getScrapeSessionWithSuggestions(suggestionsScrapeId);
 
-      if (suggestionScrapeSessionIsBroken) {
-        console.log('suggestion scrape session is not found');
-        throw new Error('suggestion scrape session is not found');
-      }
-
       if (!suggestionScrapeSession) {
         console.log(`didnt find scrape session: ${didntFindSuggestionsI}`);
         didntFindSuggestionsI++;
         suggestionScrapeSessionIsBroken = didntFindSuggestionsI > 25;
         continue;
       }
+
+      const didntFindAnyKeywords = suggestionScrapeSession.isSuccesful && suggestionScrapeSession.keywords.length === 0;
+      if (didntFindAnyKeywords) throw new Error('didnt find any keyword suggestions');
+
+      if (suggestionScrapeSession.error) throw new Error(JSON.stringify(suggestionScrapeSession.error));
 
       hasAlreadySavedkeywSuggestions = suggestionScrapeSession.keywords.length > 0;
       console.log(`has already saved keyword suggestions: ${hasAlreadySavedkeywSuggestions} `);
@@ -106,7 +106,7 @@ export class ScrapeWorkflowService {
       await this.utils.wait(2000);
     }
 
-    throw 'was unable to scrape keyword suggestions';
+    throw new Error('was unable to scrape keyword suggestions');
   }
 
   private async getScrapeSessionWithSuggestions(scrapeSessionId: string) {

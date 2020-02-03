@@ -25,14 +25,8 @@ export class UbersuggestService {
     @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
   ) {}
 
-  async updateAnaliticsScrapeSessionWithError(analiticsScrapeSessionId: string, error: Error) {
-    const scrapeSession = await this.scrapeSessionRepo.findOne({ id: analiticsScrapeSessionId });
-    scrapeSession.error = this.utils.createStringifyableError(error);
-    return this.scrapeSessionRepo.save(scrapeSession);
-    // return this.scrapeSessionRepo.update(
-    //   { error: 'faszom' as any, isSuccesful: false },
-    //   { id: analiticsScrapeSessionId },
-    // );
+  async updateScrapeSessionWithError(scrapeSessionId: string, error: Error) {
+    return this.utils.updateScrapeSessionWithError(scrapeSessionId, error);
   }
 
   async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
@@ -72,10 +66,9 @@ export class UbersuggestService {
       scrapeSession.isSuccesful = true;
       await this.scrapeSessionRepo.save(scrapeSession);
       console.log('scrape session updated to successful');
-    } catch (e) {
-      console.error(e);
-      scrapeSession.error = e;
-      await this.scrapeSessionRepo.save(scrapeSession);
+    } catch (err) {
+      console.error(err);
+      this.utils.updateScrapeSessionWithError(scrapeSession.id, err);
       console.log('scrape session updated to error');
     }
   }
