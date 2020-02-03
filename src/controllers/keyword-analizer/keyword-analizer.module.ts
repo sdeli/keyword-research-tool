@@ -20,14 +20,16 @@ const keywordAnalizerConfig: KeywordIoConfigI = config.KeywordIo;
 const ubersuggestConfig: UbersuggestConfigI = config.ubersuggest;
 const globalConfig: GlobalConfigI = config.global;
 
-@Module({
+const isRunningInJustScrapersMode = process.env.JUST_SCRAPER_MODE === 'true';
+
+const keywordAnalizerModule = {
   imports: [
     TypeOrmModule.forFeature([Keyword, GoogleSerpLinks, ScrapeSession]),
     PuppeteerUtilsModule,
     UtilsModule,
     ProcessQueueModule,
   ],
-  controllers: [KeywordAnalizerController],
+  controllers: [],
   providers: [
     KeywordIoService,
     UbersuggestService,
@@ -44,5 +46,16 @@ const globalConfig: GlobalConfigI = config.global;
       useValue: globalConfig,
     },
   ],
-})
+  exports: [UbersuggestService],
+};
+
+if (isRunningInJustScrapersMode) {
+  keywordAnalizerModule.imports.push(TypeOrmModule.forRoot({ keepConnectionAlive: true }));
+  keywordAnalizerModule.imports.push(TypeOrmModule.forFeature([Keyword, GoogleSerpLinks, ScrapeSession]));
+} else {
+  keywordAnalizerModule.controllers.push(KeywordAnalizerController);
+  keywordAnalizerModule.imports.push(TypeOrmModule.forFeature([Keyword, GoogleSerpLinks, ScrapeSession]));
+}
+
+@Module(keywordAnalizerModule)
 export class KeywordAnalizerModule {}

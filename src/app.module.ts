@@ -15,6 +15,5 @@ import { UtilsModule } from '@shared/utils';
   ],
   controllers: [],
   providers: [AppService],
-  exports: [UtilsModule],
 })
 export class AppModule {}

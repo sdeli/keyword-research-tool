@@ -11,6 +11,16 @@ import { ParsedProcessArgsT } from '@shared/shared.types';
 export class UtilsService {
   constructor(@InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>) {}
 
+  async updateScrapeSessionWithError(scrapeSessionId: string, error: Error) {
+    const scrapeSession = await this.scrapeSessionRepo.findOne({ id: scrapeSessionId });
+    scrapeSession.error = this.createStringifyableError(error);
+    return this.scrapeSessionRepo.save(scrapeSession);
+    // return this.scrapeSessionRepo.update(
+    //   { error: 'faszom' as any, isSuccesful: false },
+    //   { id: scrapeSessionId },
+    // );
+  }
+
   createStringifyableError(error: Error): StringifyAbleError {
     return {
       message: error.message,
@@ -120,9 +130,9 @@ export class UtilsService {
 
     scrapeSession.id = scrapeSessionId;
     scrapeSession.masterKeyword = keyword;
-    scrapeSession.isSuccesful = !err;
-    scrapeSession.error = errorJson;
     scrapeSession.path = path;
+
+    if (scrapeSessionParams.isSuccesful) scrapeSession.isSuccesful = scrapeSessionParams.isSuccesful;
 
     return this.scrapeSessionRepo.save(scrapeSession);
   }

@@ -40,7 +40,10 @@ export class ProcessQueueService {
     const spawnOpts: SpawnOptions = {
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       cwd: process.cwd(),
-      env: process.env,
+      env: {
+        ...process.env,
+        JUST_SCRAPER_MODE: 'true',
+      },
     };
 
     const scraperParamsOnShell = this.getScrapeProcessParams(scraperParams, processId);
