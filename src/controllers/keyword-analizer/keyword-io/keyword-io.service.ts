@@ -7,7 +7,11 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 
-import { KeywordIoConfigI, SaveScrapeSessionParamsI } from '@keyword-analizer/keyword-analizer.interfaces';
+import {
+  KeywordIoConfigI,
+  SaveScrapeSessionParamsI,
+  BrowserPackageI,
+} from '@keyword-analizer/keyword-analizer.interfaces';
 import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
@@ -36,7 +40,13 @@ export class KeywordIoService {
       const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session saved');
 
-      const { browser, page: pageOnKwIo } = await this.getPageOnKywdIo();
+      const browserPackage = await this.getPageOnKywdIo();
+      if (!browserPackage) {
+        console.log('keywordio always detects');
+        await this.utils.updateScrapeSessionWithError(scrapeSessionId, Error('keywordio always detects'));
+      }
+
+      const { browser, page: pageOnKwIo } = browserPackage as BrowserPackageI;
       console.log('got anti captcah page on keyword.io');
 
       await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
@@ -72,26 +82,64 @@ export class KeywordIoService {
     }
   }
 
-  async getPageOnKywdIo(): Promise<{
-    browser: Browser;
-    page: Page;
-  }> {
+  async getPageOnKywdIo(): Promise<BrowserPackageI | boolean> {
     const { url, headless } = this.config;
     const { downloadsFolder, userDataFolder } = this.globalConf;
-    const { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
-      headless,
-      userDataDir: userDataFolder,
-      downloadPath: downloadsFolder,
-    });
 
-    await this.puppeteerUtils.preparePageForDetection(page);
+    let detectedCount = 0;
+    let keywordIoIsAlwaysDetectingUs = false;
 
-    await page.goto(url);
+    while (!keywordIoIsAlwaysDetectingUs) {
+      try {
+        var { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
+          headless,
+          userDataDir: userDataFolder,
+          downloadPath: downloadsFolder,
+        });
+
+        await this.puppeteerUtils.preparePageForDetection(page);
+
+        await page.goto(url);
+
+        const isPageScrapable = await this.isPageScrapable(page);
+        if (isPageScrapable) break;
+        else {
+          detectedCount++;
+          keywordIoIsAlwaysDetectingUs = detectedCount > 15;
+          this.puppeteerUtils.makeScreenshot(page, 'keyword-io-detected');
+          console.log('keyword io detected us, screenshot made, waiting and requesting new page');
+          await this.utils.waitBetween(35000, 20000);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    if (keywordIoIsAlwaysDetectingUs) return false;
 
     return {
       browser,
       page,
     };
+  }
+
+  private async isPageScrapable(pageOnKwIo: Page): Promise<boolean> {
+    const {
+      urlIncludes,
+      selectors: { researchKeywordInput, startKywResBtn },
+    } = this.config;
+
+    const currUrl = await pageOnKwIo.url();
+    const isOnCorrectPage = currUrl.includes(urlIncludes);
+    if (!isOnCorrectPage) return false;
+
+    const researchKeywordInputElem = await pageOnKwIo.$(researchKeywordInput);
+    if (!researchKeywordInputElem) return false;
+
+    const startKywResBtnElem = await pageOnKwIo.$(startKywResBtn);
+    if (!startKywResBtnElem) return false;
+
+    return true;
   }
 
   private async researchForKeywordOnKywIo(pageOnKwIo: Page, keyword: string): Promise<void> {

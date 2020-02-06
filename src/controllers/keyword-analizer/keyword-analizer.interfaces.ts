@@ -1,3 +1,6 @@
+import { Browser } from 'puppeteer';
+import { Page } from 'puppeteer-extra-plugin-recaptcha-2/dist/types';
+
 export interface StringifyAbleError {
   message: string;
   stack: string;
@@ -5,6 +8,7 @@ export interface StringifyAbleError {
 
 export interface KeywordIoConfigI {
   url: string;
+  urlIncludes: string;
   domain: string;
   headless: boolean;
   selectors: {
@@ -39,4 +43,9 @@ export interface SaveScrapeSessionParamsI {
 
 export interface EntityRelationNames {
   [key: string]: string;
+}
+
+export interface BrowserPackageI {
+  browser: Browser;
+  page: Page;
 }

@@ -16,6 +16,7 @@ const localModulConfigurations = {
     headless: globalConfigs.headless,
     url:
       'https://keywordtool.io/search/keywords/google/43936310?category=web&keyword=gyerek%20j%C3%A1t%C3%A9kok&country=HU&language=hu#suggestions',
+    urlIncludes: 'https://keywordtool.io/search/keywords/google/',
     domain: 'https://keywordtool.io/',
     selectors: {
       researchKeywordInput: '#edit-keyword--3',
