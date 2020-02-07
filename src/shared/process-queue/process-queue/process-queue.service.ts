@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { ChildProcess, spawn, SpawnOptions } from 'child_process';
-import { UbersuggestAnaliticsParams } from '@process-queue/process-queue.types';
+import { UbersuggestAnaliticsParams, KeywordIoScraperParams } from '@process-queue/process-queue.types';
 
 const NODE_EXECUTABLE = '/home/sandor/.nvm/versions/node/v10.16.3/bin/node';
 const SCRAPE_ANALITICS_FOR_MORE_KYWS_AND_UPDATE_DB_PATH = `${__dirname}/scraper-processes/scrape-analitics-for-more-kyws-and-update-db-process.js`;
+const GET_KEYWORD_SUGGESTIONS_FOR_ONE = `${__dirname}/scraper-processes/get-keyword-suggestions-for-one.process.js`;
 
 @Injectable()
 export class ProcessQueueService {
   private queue = {};
 
-  register(scraperParams: UbersuggestAnaliticsParams) {
+  register(scraperParams: UbersuggestAnaliticsParams | KeywordIoScraperParams) {
     const processId = this.getProcessId(scraperParams);
     if (this.isAlreadyRegistered(processId)) return false;
 
@@ -23,10 +24,13 @@ export class ProcessQueueService {
     scraperProcess.kill('SIGINT');
   }
 
-  private getProcessId(scraperParams: UbersuggestAnaliticsParams): string {
-    const is = scraperParams instanceof UbersuggestAnaliticsParams;
-    if (is) {
+  private getProcessId(scraperParams: UbersuggestAnaliticsParams | KeywordIoScraperParams): string {
+    if (scraperParams instanceof UbersuggestAnaliticsParams) {
       return scraperParams.analiticsScrapeSessionId;
+    }
+
+    if (scraperParams instanceof KeywordIoScraperParams) {
+      return scraperParams.suggestionsScrapeSessionId;
     }
   }
 
@@ -36,7 +40,7 @@ export class ProcessQueueService {
     return !!scraperProc;
   }
 
-  private runScraperProcess(scraperParams: UbersuggestAnaliticsParams, processId: string) {
+  private runScraperProcess(scraperParams: UbersuggestAnaliticsParams | KeywordIoScraperParams, processId: string) {
     const spawnOpts: SpawnOptions = {
       stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       cwd: process.cwd(),
@@ -55,12 +59,20 @@ export class ProcessQueueService {
     return scraperProc;
   }
 
-  private getScrapeProcessParams(scraperParams: UbersuggestAnaliticsParams, processId: string): string[] {
+  private getScrapeProcessParams(
+    scraperParams: UbersuggestAnaliticsParams | KeywordIoScraperParams,
+    processId: string,
+  ): string[] {
     const scraperParamsOnShell = [];
 
     if (scraperParams instanceof UbersuggestAnaliticsParams) {
       // scraperParamsOnShell.push('--inspect-brk=0.0.0.0:9000');
       scraperParamsOnShell.push(SCRAPE_ANALITICS_FOR_MORE_KYWS_AND_UPDATE_DB_PATH);
+    }
+
+    if (scraperParams instanceof KeywordIoScraperParams) {
+      // scraperParamsOnShell.push('--inspect-brk=0.0.0.0:9000');
+      scraperParamsOnShell.push(GET_KEYWORD_SUGGESTIONS_FOR_ONE);
     }
 
     for (const scrapeParamKey in scraperParams) {

@@ -21,7 +21,7 @@ async function scrapeAnaliticsForMoreKywsAndUpdateDb() {
     process.send('new process scrapeAnaliticsForMoreKywsAndUpdateDb finished');
   } catch (err) {
     console.log('error propagated to main level, update scraper with error, closing process');
-    await ubersuggestService.updateScrapeSessionWithError(analiticsScrapeSessionId, err);
+    await ubersuggestService.updateAnaliticsScrapeSessionWithError(analiticsScrapeSessionId, err);
     throw new Error(err);
   }
 }

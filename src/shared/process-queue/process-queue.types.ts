@@ -6,3 +6,12 @@ export class UbersuggestAnaliticsParams {
     Object.assign(this, conf);
   }
 }
+
+export class KeywordIoScraperParams {
+  suggestionsScrapeSessionId: string;
+  keyword: string;
+
+  constructor(conf: KeywordIoScraperParams) {
+    Object.assign(this, conf);
+  }
+}

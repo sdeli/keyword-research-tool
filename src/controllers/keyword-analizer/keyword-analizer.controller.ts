@@ -4,7 +4,7 @@ import { Controller, Get, Header, Param } from '@nestjs/common';
 import { UbersuggestService } from './ubersuggest/ubersuggest.service';
 import { KeywordIoService } from './keyword-io/keyword-io.service';
 import { ProcessQueueService } from '@process-queue/process-queue/process-queue.service';
-import { UbersuggestAnaliticsParams } from '@process-queue/process-queue.types';
+import { UbersuggestAnaliticsParams, KeywordIoScraperParams } from '@process-queue/process-queue.types';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -43,12 +43,16 @@ export class KeywordAnalizerController {
 
   @Get('suggestions/:keyword')
   getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
-    const scrapeSessionId = uuidv1();
-    this.kywIoService.scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId, keyword).catch(err => {
-      console.error(err);
+    const params = new KeywordIoScraperParams({
+      suggestionsScrapeSessionId: uuidv1(),
+      keyword,
     });
 
-    return scrapeSessionId;
+    console.log('starting new analitics robot with conf:');
+    console.log(params);
+    this.processQueueService.register(params);
+
+    return params.suggestionsScrapeSessionId;
   }
 
   @Get('analitics/keyword/:keyword')
@@ -75,6 +79,6 @@ export class KeywordAnalizerController {
     return analiticsConf.analiticsScrapeSessionId;
   }
 
-  @Get('test/')
-  async test() {}
+  // @Get('test/')
+  // async test() {}
 }

@@ -28,6 +28,10 @@ export class KeywordIoService {
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
   ) {}
 
+  async updateScrapeSessionWithError(scrapeSessionId: string, error: Error) {
+    return this.utils.updateScrapeSessionWithError(scrapeSessionId, error);
+  }
+
   async scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId: string, keyword: string): Promise<void> {
     console.log(`getting suggestions for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
@@ -46,7 +50,7 @@ export class KeywordIoService {
         await this.utils.updateScrapeSessionWithError(scrapeSessionId, Error('keywordio always detects'));
       }
 
-      const { browser, page: pageOnKwIo } = browserPackage as BrowserPackageI;
+      var { browser, page: pageOnKwIo } = browserPackage as BrowserPackageI;
       console.log('got anti captcah page on keyword.io');
 
       await this.researchForKeywordOnKywIo(pageOnKwIo, keyword);
@@ -77,6 +81,7 @@ export class KeywordIoService {
       console.log('scrape session updated to be succesfuls');
     } catch (err) {
       console.error(err);
+      await this.puppeteerUtils.makeScreenshot(pageOnKwIo, scrapeSessionId);
       await this.utils.updateScrapeSessionWithError(scrapeSessionId, err);
       console.log('scrape session updated with error');
     }
@@ -106,7 +111,7 @@ export class KeywordIoService {
         else {
           detectedCount++;
           keywordIoIsAlwaysDetectingUs = detectedCount > 15;
-          this.puppeteerUtils.makeScreenshot(page, 'keyword-io-detected');
+          await this.puppeteerUtils.makeScreenshot(page, 'keyword-io-detected');
           console.log('keyword io detected us, screenshot made, waiting and requesting new page');
           await this.utils.waitBetween(35000, 20000);
         }
@@ -129,7 +134,7 @@ export class KeywordIoService {
       selectors: { researchKeywordInput, startKywResBtn },
     } = this.config;
 
-    const currUrl = await pageOnKwIo.url();
+    const currUrl = pageOnKwIo.url();
     const isOnCorrectPage = currUrl.includes(urlIncludes);
     if (!isOnCorrectPage) return false;
 
@@ -144,7 +149,6 @@ export class KeywordIoService {
 
   private async researchForKeywordOnKywIo(pageOnKwIo: Page, keyword: string): Promise<void> {
     const { researchKeywordInput, startKywResBtn, keywordsAppearedSel } = this.config.selectors;
-    await this.puppeteerUtils.makeScreenshot(pageOnKwIo, 'majom');
 
     console.log('research on kywio starts');
     await pageOnKwIo.evaluate(researchKeywordInputSel => {
