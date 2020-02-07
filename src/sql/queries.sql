@@ -35,21 +35,6 @@ SELECT
 FROM
     keyword
 WHERE
-    keyword IN(
-        --    'majom rágóka',
-        'majomparádé2',
-        'majomkenyérfa2',
-        'majomparádé2',
-        'majomkenyér',
-        'majomfa',
-        'majom fajták'
-    );
-
-SELECT
-    *
-FROM
-    keyword
-WHERE
     "searchVolume" IS NOT NULL;
 
 SELECT

@@ -25,7 +25,7 @@ export class UbersuggestService {
     @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
   ) {}
 
-  async updateScrapeSessionWithError(scrapeSessionId: string, error: Error) {
+  async updateAnaliticsScrapeSessionWithError(scrapeSessionId: string, error: Error) {
     return this.utils.updateScrapeSessionWithError(scrapeSessionId, error);
   }
 
@@ -44,7 +44,7 @@ export class UbersuggestService {
       scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session saved');
 
-      const { browser, pageOnUbersuggest } = await this.getScrapablePage();
+      var { browser, pageOnUbersuggest } = await this.getScrapablePage();
       console.log('got scrapeable page');
 
       await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
@@ -68,7 +68,8 @@ export class UbersuggestService {
       console.log('scrape session updated to successful');
     } catch (err) {
       console.error(err);
-      this.utils.updateScrapeSessionWithError(scrapeSession.id, err);
+      await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, scrapeSessionId);
+      await this.utils.updateScrapeSessionWithError(scrapeSession.id, err);
       console.log('scrape session updated to error');
     }
   }
@@ -130,6 +131,7 @@ export class UbersuggestService {
       } catch (err) {
         console.log('err in try catch 2');
         console.error(err);
+        await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, analiticsScrapeSessionId);
         await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
         console.log(`keyword: ${keyword} updated to include err`);
 
@@ -176,6 +178,8 @@ export class UbersuggestService {
       userDataDir: userDataFolder,
       downloadPath: downloadsFolder,
     });
+
+    await this.puppeteerUtils.preparePageForDetection(page);
 
     await page.goto(url);
 

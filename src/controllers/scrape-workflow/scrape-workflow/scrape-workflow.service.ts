@@ -87,6 +87,7 @@ export class ScrapeWorkflowService {
         console.log(`didnt find scrape session: ${didntFindSuggestionsI}`);
         didntFindSuggestionsI++;
         suggestionScrapeSessionIsBroken = didntFindSuggestionsI > 25;
+        await this.utils.wait(2000);
         continue;
       }
 
@@ -207,7 +208,7 @@ export class ScrapeWorkflowService {
     const fullAnaliticsScraperEp = `${SCRAPE_ANALTICS_FOR_MORE_KYWS_EP}/${suggestionsScrapeId}`;
     let launchedScrapersCount = 0;
     let hasLaunchedEnoughScrapers = false;
-    let launchedAnaliticsScrapers: ScrapeSession[] = [];
+    const launchedAnaliticsScrapers: ScrapeSession[] = [];
     console.log(
       `launching analitics scrapers, scrapeWorflow: ${scrapeWorflow.id}, scrapersToLaunchCount: ${scrapersToLaunchCount}, suggestionsScrapeId: ${suggestionsScrapeId}`,
     );
