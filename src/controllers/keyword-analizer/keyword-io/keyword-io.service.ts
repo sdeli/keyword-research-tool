@@ -50,6 +50,7 @@ export class KeywordIoService {
         await this.utils.updateScrapeSessionWithError(scrapeSessionId, Error('keywordio always detects'));
       }
 
+      // tslint:disable-next-line: no-var-keyword prefer-const
       var { browser, page: pageOnKwIo } = browserPackage as BrowserPackageI;
       console.log('got anti captcah page on keyword.io');
 
@@ -96,6 +97,7 @@ export class KeywordIoService {
 
     while (!keywordIoIsAlwaysDetectingUs) {
       try {
+        // tslint:disable-next-line: no-var-keyword prefer-const
         var { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
           headless,
           userDataDir: userDataFolder,

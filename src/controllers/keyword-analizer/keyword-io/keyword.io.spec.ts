@@ -1,9 +1,7 @@
 import rp from 'request-promise';
 import request from 'request';
 
-(async () => {
-  testKeywordSuggestions();
-})();
+testKeywordSuggestions().catch(err => console.error(err));
 
 async function testKeywordSuggestions() {
   request.get(

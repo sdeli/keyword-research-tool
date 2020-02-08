@@ -17,14 +17,13 @@
     "no-require-imports": false,
     "no-console": false,
     "trailing-comma": [true, { "multiline": "always", "singleline": "never" }],
-    "no-relative-imports": true,
     "no-floating-promises": true,
     "await-promise": true,
     "non-string-literal": false,
-      "no-string-literal": false,
+    "no-string-literal": false,
     "no-shadowed-variable": false,
-      "no-empty-interface": false,
-      "curly": false
+    "no-empty-interface": false,
+    "curly": false
   },
   "rulesDirectory": []
 }

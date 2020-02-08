@@ -34,7 +34,7 @@ export class ScrapeWorkflowController {
 
   @Get('one')
   analizeKeywordsOfOne(@Query('keyword') keyword: string, @Query('concurrency') concurrency: string = '2') {
-    const concurrencyNum = parseInt(concurrency);
+    const concurrencyNum = parseInt(concurrency, 10);
     this.scrapeManagerService.analizeKeywordsOfOne(keyword, concurrencyNum).catch(e => {
       console.error(e);
     });

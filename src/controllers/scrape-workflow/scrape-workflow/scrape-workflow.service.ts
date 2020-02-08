@@ -60,6 +60,7 @@ export class ScrapeWorkflowService {
 
   private async getSuggestionsIntoDb(keyword: string): Promise<ScrapeSession> {
     const scrapeSuggestionsForOneAndSaveInDbEp = `http://localhost:3000/keyword/suggestions/${keyword}`;
+    // tslint:disable-next-line: await-promise
     const suggestionsScrapeId: string = await rp.get(scrapeSuggestionsForOneAndSaveInDbEp);
     console.log(`suggestion-scrape id: ${suggestionsScrapeId}`);
 
@@ -214,6 +215,7 @@ export class ScrapeWorkflowService {
     );
 
     while (!hasLaunchedEnoughScrapers) {
+      // tslint:disable-next-line: prefer-const no-var-keyword await-promise
       var analiticsScrapeId: string = await rp.get(fullAnaliticsScraperEp);
       console.log(`launched analtics scrapers id: ${analiticsScrapeId}`);
 
