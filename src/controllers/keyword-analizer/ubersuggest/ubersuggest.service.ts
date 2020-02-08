@@ -44,6 +44,7 @@ export class UbersuggestService {
       scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session saved');
 
+      // tslint:disable-next-line: prefer-const no-var-keyword
       var { browser, pageOnUbersuggest } = await this.getScrapablePage();
       console.log('got scrapeable page');
 

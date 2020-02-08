@@ -6,14 +6,16 @@ import { KeywordIoScraperParams } from '@process-queue/process-queue.types';
 import { ParsedProcessArgsT } from '@shared/shared.types';
 import { KeywordIoService } from '@keyword-analizer/keyword-io/keyword-io.service';
 
-getKeywordSuggestionsForOne();
+getKeywordSuggestionsForOne().catch(err => console.error(err));
 
 async function getKeywordSuggestionsForOne() {
   try {
     process.send('new process for getKeywordSuggestionsForOne started');
     const keywordAnlizerApp = await NestFactory.create(KeywordAnalizerModule);
+    // tslint:disable-next-line: prefer-const no-var-keyword
     var { suggestionsScrapeSessionId, keyword } = getSuggestionsParams(keywordAnlizerApp);
 
+    // tslint:disable-next-line: prefer-const no-var-keyword
     var keywordIoService: KeywordIoService = keywordAnlizerApp.get('KeywordIoService');
     process.send('getKeywordSuggestionsForOne starts');
     await keywordIoService.scrapeSuggestionsForOneAndSaveInDb(suggestionsScrapeSessionId, keyword);
