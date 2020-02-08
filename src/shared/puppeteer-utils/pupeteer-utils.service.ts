@@ -141,18 +141,18 @@ export class PuppeteerUtilsService {
     return captchasOnPage.length > 0;
   }
 
+  async solveCaptchaIfNeeded(page: Page, delayAfterCaptcha: number = 0) {
+    const hasCaptchaOnPage = await this.hasCaptchasOnPage(page);
+    if (hasCaptchaOnPage) {
+      await this.solveCaptchas(page);
+      await this.utils.wait(delayAfterCaptcha);
+    }
+  }
+
   async makeScreenshot(page: Page, phrase: string): Promise<void> {
     const now = new Date();
-    await page.screenshot({ path: `${process.cwd()}/src/assets/${phrase}-${now}.png` });
+    const screenshotName = `/${now}-${phrase}.png`;
+    await page.screenshot({ path: `${process.cwd()}/src/assets/${screenshotName}` });
+    console.log(`screenshot made: ${screenshotName}`);
   }
 }
-
-// var storage = window['sessionStorage'];
-// var storageObj = {};
-//
-// for (let i = 0; i < window['sessionStorage'].length; i++) {
-//   const key = storage.key(i);
-//   storageObj[key] = storage.getItem(key);
-// }
-//
-// var gecc = JSON.stringify(storageObj, null, 2);
