@@ -29,6 +29,7 @@ const localModulConfigurations = {
   ubersuggest: {
     headless: globalConfigs.headless,
     url: 'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword=gyerek%20játékok&locId=2348&lang=hu',
+    urlIncludes: 'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword',
     domain: 'https://app.neilpatel.com',
     selectors: {
       researchKeywordInput: '[placeholder="Enter in a keyword or domain"]',

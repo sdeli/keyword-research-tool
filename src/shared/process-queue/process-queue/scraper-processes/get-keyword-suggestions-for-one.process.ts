@@ -20,7 +20,7 @@ async function getKeywordSuggestionsForOne() {
     process.send('getKeywordSuggestionsForOne starts');
     await keywordIoService.scrapeSuggestionsForOneAndSaveInDb(suggestionsScrapeSessionId, keyword);
 
-    process.send('new process getKeywordSuggestionsForOne finished');
+    process.send('process getKeywordSuggestionsForOne finished');
   } catch (err) {
     console.log('error propagated to main level, update scraper with error, closing process');
     await keywordIoService.updateScrapeSessionWithError(suggestionsScrapeSessionId, err);

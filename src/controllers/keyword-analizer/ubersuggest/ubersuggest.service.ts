@@ -13,6 +13,7 @@ import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { Repository } from 'typeorm';
+import { MakePageScrapableIfNotService } from './make-page-scrapable-if-not/make-page-scrapable-if-not.service';
 
 @Injectable()
 export class UbersuggestService {
@@ -21,6 +22,7 @@ export class UbersuggestService {
     @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly puppeteerUtils: PuppeteerUtilsService,
     private readonly utils: UtilsService,
+    private readonly makePageScrapableIfNot: MakePageScrapableIfNotService,
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
     @InjectRepository(ScrapeSession) private readonly scrapeSessionRepo: Repository<ScrapeSession>,
   ) {}
@@ -45,8 +47,10 @@ export class UbersuggestService {
       console.log('scrape session saved');
 
       // tslint:disable-next-line: prefer-const no-var-keyword
-      var { browser, pageOnUbersuggest } = await this.getScrapablePage();
+      var { browser, page: pageOnUbersuggest } = await this.getAntiCaptchaPageOnUbersuggest();
       console.log('got scrapeable page');
+
+      await this.makePageScrapableIfNot.do(pageOnUbersuggest, scrapeSessionId);
 
       await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
       console.log('page could show data succesfully');
@@ -88,35 +92,39 @@ export class UbersuggestService {
     let pageOnUbersuggest: Page;
     let keyword: string;
     let downloadedKeywordsFilePath: string;
-    let consecutiveErrorsCount = 0;
+    let consecutiveKeywordErrorsCount = 0;
 
     while (hasKeywordsInDbWithoutAnalitics) {
       try {
+        const hasJustStartedScraping = !pageOnUbersuggest;
+        if (hasJustStartedScraping) {
+          const pageObj = await this.getAntiCaptchaPageOnUbersuggest();
+          console.log('got anti captcha page');
+          browser = pageObj.browser;
+          pageOnUbersuggest = pageObj.page;
+        }
+
+        const isPageScrapable = await this.makePageScrapableIfNot.do(pageOnUbersuggest, analiticsScrapeSessionId);
+        if (isPageScrapable) console.log('page is (or made to be) scrapable');
+        else {
+          await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, analiticsScrapeSessionId);
+          throw new Error('page is not scrapable, process returns');
+        }
+
         const keywordEntity = await this.getKeywordSuggestion(suggestionsScrapeId);
         if (!keywordEntity) {
           console.log('there are no more keywords without analitics in this suggestion scrape session');
           break;
-        } else keyword = keywordEntity.keyword;
-      } catch (e) {
-        console.log('err in try catch 1');
-        console.error(e);
-        break;
+        }
+
+        keyword = keywordEntity.keyword;
+        console.log(`current keyword to get analitics for: ${keyword}`);
+      } catch (err) {
+        console.error(`browser error happened`);
+        throw new Error(err);
       }
 
       try {
-        console.log(`current keyword to get analitics for: ${keyword}`);
-
-        const hasJustStartedScraping = !pageOnUbersuggest;
-        if (hasJustStartedScraping) {
-          const pageObj = await this.getScrapablePage();
-          console.log('got anti captcha page');
-          browser = pageObj.browser;
-          pageOnUbersuggest = pageObj.pageOnUbersuggest;
-        } else {
-          await this.makePageScrapableIfNot(pageOnUbersuggest);
-          console.log('page is (or made to be) scrapable');
-        }
-
         await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
         console.log('keyword analitics could be loaded into page');
 
@@ -128,7 +136,7 @@ export class UbersuggestService {
         }
 
         downloadedKeywordsFilePath = fileToDownloadPath;
-        consecutiveErrorsCount = 0;
+        consecutiveKeywordErrorsCount = 0;
       } catch (err) {
         console.log('err in try catch 2');
         console.error(err);
@@ -136,10 +144,10 @@ export class UbersuggestService {
         await this.updateKeywordToErr(err, keyword, suggestionsScrapeId);
         console.log(`keyword: ${keyword} updated to include err`);
 
-        consecutiveErrorsCount++;
-        const errorOccursInfinitely = consecutiveErrorsCount > 3;
+        consecutiveKeywordErrorsCount++;
+        const errorOccursInfinitely = consecutiveKeywordErrorsCount > 3;
         if (errorOccursInfinitely) {
-          console.log('due to consecutive errors process closed');
+          console.log('due to consecutive keyword errors process closed');
           throw new Error(err);
         }
 
@@ -190,66 +198,6 @@ export class UbersuggestService {
     };
   }
 
-  private async getScrapablePage(): Promise<{ browser: Browser; pageOnUbersuggest: Page }> {
-    console.log('getting scrapable page');
-
-    const antiCaptchaPage = await this.getAntiCaptchaPageOnUbersuggest();
-    const pageOnUbersuggest = antiCaptchaPage.page;
-    const { browser } = antiCaptchaPage;
-    console.log('got anti captcha page');
-
-    const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
-    console.log('is logged in: ' + isLoggedIn);
-    if (!isLoggedIn) {
-      const couldLogIn = await this.tryToLogIn(pageOnUbersuggest);
-      if (!couldLogIn) throw new Error('could not log into ubersuggest');
-    }
-
-    await pageOnUbersuggest.waitFor(2000);
-
-    const hasCaptchaOnPage = await this.puppeteerUtils.hasCaptchasOnPage(pageOnUbersuggest);
-    console.log('has captcha on page ' + hasCaptchaOnPage);
-    if (hasCaptchaOnPage) {
-      await this.puppeteerUtils.solveCaptchas(pageOnUbersuggest);
-      await this.utils.wait(3000);
-    }
-
-    return {
-      browser,
-      pageOnUbersuggest,
-    };
-  }
-
-  private async isLoggedInToUbersuggest(pageOnUbersuggest: Page): Promise<boolean> {
-    const { loggedInImgSel, loginWithGoogleBtnSel } = this.config.selectors;
-
-    const loggedInImageElemHandle = await pageOnUbersuggest.$(loggedInImgSel);
-    const loginWithGoogleElemHandle = await pageOnUbersuggest.$(loginWithGoogleBtnSel);
-
-    return loggedInImageElemHandle && !loginWithGoogleElemHandle;
-  }
-
-  private async tryToLogIn(pageOnUbersuggest): Promise<boolean> {
-    const { loginWithGoogleBtnSel, loggedInImgSel } = this.config.selectors;
-    let loginTriesCounter = 0;
-    let successfullyLoggedIn = false;
-
-    do {
-      console.log('try to log in ' + loginTriesCounter);
-      console.log(successfullyLoggedIn);
-      try {
-        await pageOnUbersuggest.click(loginWithGoogleBtnSel);
-        await pageOnUbersuggest.waitForSelector(loggedInImgSel, { timeout: 2000 });
-        successfullyLoggedIn = true;
-      } catch (e) {
-        loginTriesCounter++;
-      }
-    } while (!successfullyLoggedIn && loginTriesCounter < 10);
-
-    console.log('logged in');
-    return successfullyLoggedIn;
-  }
-
   private async searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest: Page, keyword: string) {
     const { researchKeywordInput } = this.config.selectors;
     let hasPageShownCorrectData = false;
@@ -280,7 +228,6 @@ export class UbersuggestService {
     const { keywordResearchResAppearedSel } = this.config.selectors;
     await this.setKeywResearchInputsValue(pageOnUbersuggest, keyword);
     await this.utils.waitBetween(900, 1500);
-    await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, 'typed');
     await this.clickStartKeywordResearchBtn(pageOnUbersuggest);
     await pageOnUbersuggest.waitForSelector(keywordResearchResAppearedSel);
   }
@@ -503,50 +450,5 @@ export class UbersuggestService {
     }
 
     return keyword;
-  }
-
-  private async makePageScrapableIfNot(pageOnUbersuggest: Page) {
-    const hasAllSelectorsOnPage = await this.hasAllSelectorsOnPage(pageOnUbersuggest);
-    if (!hasAllSelectorsOnPage) throw new Error('page is broken or not the page we want to scrape');
-
-    const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
-    console.log('is logged in: ' + isLoggedIn);
-    if (!isLoggedIn) {
-      const couldLogIn = await this.tryToLogIn(pageOnUbersuggest);
-      if (!couldLogIn) throw new Error('could not log into ubersuggest');
-      await pageOnUbersuggest.waitFor(2000);
-    }
-
-    const hasCaptchaOnPage = await this.puppeteerUtils.hasCaptchasOnPage(pageOnUbersuggest);
-    console.log('has captcha on page ' + hasCaptchaOnPage);
-    if (hasCaptchaOnPage) {
-      await this.puppeteerUtils.solveCaptchas(pageOnUbersuggest);
-      await this.utils.wait(3000);
-    }
-  }
-
-  private async hasAllSelectorsOnPage(pageOnUbersuggest) {
-    let hasAllSelectorsOnPage = true;
-    const {
-      keywordResearchResAppearedSel,
-      loggedInImgSel,
-      loginWithGoogleBtnSel,
-      researchKeywordInput,
-    } = this.config.selectors;
-
-    const hasKeywordResearchBoxOnPage = (await pageOnUbersuggest.$(researchKeywordInput)) !== null;
-    if (!hasKeywordResearchBoxOnPage) {
-      hasAllSelectorsOnPage = false;
-      console.log(`doenst have selector: ${keywordResearchResAppearedSel} on the page`);
-    }
-
-    const hasLoggedInBtnOnPage = (await pageOnUbersuggest.$(loggedInImgSel)) !== null;
-    const hasLogInBtnOnPage = (await pageOnUbersuggest.$(loginWithGoogleBtnSel)) !== null;
-    if (!(hasLoggedInBtnOnPage || hasLogInBtnOnPage)) {
-      hasAllSelectorsOnPage = false;
-      console.log(`none of the selectors: ${loggedInImgSel} , ${loginWithGoogleBtnSel} are on the page`);
-    }
-
-    return hasAllSelectorsOnPage;
   }
 }

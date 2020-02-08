@@ -15,6 +15,8 @@ import { PuppeteerUtilsModule } from '@puppeteer-utils/puppeteer-utils.module';
 import { UtilsModule } from '@shared/utils';
 import { ProcessQueueModule } from '@process-queue/process-queue.module';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import { LogInToUbersuggestService } from './ubersuggest/log-in-to-ubersuggest/login-to-ubersuggest.service';
+import { MakePageScrapableIfNotService } from './ubersuggest/make-page-scrapable-if-not/make-page-scrapable-if-not.service';
 
 const keywordAnalizerConfig: KeywordIoConfigI = config.KeywordIo;
 const ubersuggestConfig: UbersuggestConfigI = config.ubersuggest;
@@ -33,6 +35,8 @@ const keywordAnalizerModule = {
   providers: [
     KeywordIoService,
     UbersuggestService,
+    LogInToUbersuggestService,
+    MakePageScrapableIfNotService,
     {
       provide: KEYWORD_IO_CONFIG_TOKEN,
       useValue: keywordAnalizerConfig,

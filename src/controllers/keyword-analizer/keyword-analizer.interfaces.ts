@@ -22,6 +22,7 @@ export interface KeywordIoConfigI {
 
 export interface UbersuggestConfigI {
   url: string;
+  urlIncludes: string;
   domain: string;
   headless: boolean;
   selectors: {

@@ -92,7 +92,9 @@ export class ScrapeWorkflowService {
         continue;
       }
 
-      const didntFindAnyKeywords = suggestionScrapeSession.isSuccesful && suggestionScrapeSession.keywords.length === 0;
+      const didntFindAnyKeywords =
+        (suggestionScrapeSession.isSuccesful || suggestionScrapeSession.error) &&
+        suggestionScrapeSession.keywords.length === 0;
       if (didntFindAnyKeywords) throw new Error('didnt find any keyword suggestions');
 
       if (suggestionScrapeSession.error) throw new Error(JSON.stringify(suggestionScrapeSession.error));
@@ -184,7 +186,7 @@ export class ScrapeWorkflowService {
 
     for (const [i, analiticsScraper] of runningAnaliticsScrapers.entries()) {
       const isScraperStuck = await this.isScraperStuck(analiticsScraper.id);
-      console.log(`scraper with the if id: ${isScraperStuck} is stuck: ${isScraperStuck}`);
+      console.log(`scraper with the id: ${isScraperStuck} is stuck: ${isScraperStuck}`);
       if (!isScraperStuck) continue;
 
       runningAnaliticsScrapersSet.delete(analiticsScraper);
