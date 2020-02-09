@@ -6,9 +6,10 @@ import { Repository } from 'typeorm';
 import { UtilsService } from '@shared/utils';
 import { ScrapeWorkflow } from '@scrape-workflow/entities/scrape-workflow.entity';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
+import { supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
 
-const ANALTICS_SCRAPER_PATH = 'analitics/session/:session';
-const SCRAPE_ANALTICS_FOR_MORE_KYWS_EP = `http://localhost:3000/keyword/analitics/session`;
+const ANALTICS_SCRAPER_PATH = 'analitics/more';
+const SCRAPE_ANALTICS_FOR_MORE_KYWS_EP = `http://localhost:3000/keyword/analitics/more`;
 
 @Injectable()
 export class ScrapeWorkflowService {
@@ -19,16 +20,19 @@ export class ScrapeWorkflowService {
     private readonly utils: UtilsService,
   ) {}
 
-  async analizeKeywordsOfOne(keyword: string, concurrencyCount: number) {
+  async analizeKeywordsOfOne(keyword: string, concurrencyCount: number, lang: supportedLanguages) {
     console.log(`analizing keywords for: ${keyword}`);
-    const currPath = '/scrape-workflow/:keyword';
+    const currPath = '/scrape-workflow/one';
 
     try {
       // tslint:disable-next-line:no-var-keyword prefer-const
       var scrapeWorflow = await this.saveScrapeWorkflow(currPath);
       console.log('scrape workflow saved');
 
-      const suggestionScrapeSession = await this.getSuggestionsIntoDb(keyword);
+      // const suggestionScrapeSession = await this.getSuggestionsIntoDb(keyword, lang);
+      const suggestionScrapeSession = await this.scrapeSessionRepo.findOne({
+        id: 'f6259760-4b5a-11ea-8f76-075564b8e3c7',
+      });
 
       scrapeWorflow.scrapeSessions = [suggestionScrapeSession];
       await this.scrapeWorkflowRepo.save(scrapeWorflow);
@@ -39,6 +43,7 @@ export class ScrapeWorkflowService {
         scrapeWorflow,
         suggestionScrapeSession.id,
         concurrencyCount,
+        lang,
       );
 
       console.log('added analitics to all keywords');
@@ -58,8 +63,8 @@ export class ScrapeWorkflowService {
     return this.scrapeWorkflowRepo.save(scrapeWorflow);
   }
 
-  private async getSuggestionsIntoDb(keyword: string): Promise<ScrapeSession> {
-    const scrapeSuggestionsForOneAndSaveInDbEp = `http://localhost:3000/keyword/suggestions/${keyword}`;
+  private async getSuggestionsIntoDb(keyword: string, lang: supportedLanguages): Promise<ScrapeSession> {
+    const scrapeSuggestionsForOneAndSaveInDbEp = `http://localhost:3000/keyword/suggestions/one?keyword=${keyword}&lang=${lang}`;
     // tslint:disable-next-line: await-promise
     const suggestionsScrapeId: string = await rp.get(scrapeSuggestionsForOneAndSaveInDbEp);
     console.log(`suggestion-scrape id: ${suggestionsScrapeId}`);
@@ -70,7 +75,7 @@ export class ScrapeWorkflowService {
     return suggestionScrapeSession;
   }
 
-  private async waitUntilHaveSuggestionsInDb(suggestionsScrapeId: string) {
+  private async waitUntilHaveSuggestionsInDb(suggestionsScrapeId: string): Promise<ScrapeSession> {
     console.log(
       `checking if has already keyword suggestions in db for current suggestion scrape session: ${suggestionsScrapeId}`,
     );
@@ -113,7 +118,7 @@ export class ScrapeWorkflowService {
     throw new Error('was unable to scrape keyword suggestions');
   }
 
-  private async getScrapeSessionWithSuggestions(scrapeSessionId: string) {
+  private async getScrapeSessionWithSuggestions(scrapeSessionId: string): Promise<ScrapeSession> {
     // sSRelnames => scrapeSessionRelNames
     const sSRelnames = ScrapeSession.getRelationNames();
     try {
@@ -132,6 +137,7 @@ export class ScrapeWorkflowService {
     scrapeWorflow: ScrapeWorkflow,
     suggestionsScrapeId: string,
     concurrencyCount: number,
+    lang: supportedLanguages,
   ) {
     while (true) {
       const hasKeywsWithoutAnalitics = await this.hasKeywSuggestionsWithoutAnalitics(suggestionsScrapeId);
@@ -153,7 +159,7 @@ export class ScrapeWorkflowService {
 
       const scrapersToLaunchCount = concurrencyCount - runningScrapersCount;
       console.log(`scrapersToLaunchCount: ${scrapersToLaunchCount}`);
-      await this.launchAnaliticsScrapers(scrapeWorflow, scrapersToLaunchCount, suggestionsScrapeId);
+      await this.launchAnaliticsScrapers(scrapeWorflow, scrapersToLaunchCount, suggestionsScrapeId, lang);
       await this.utils.wait(5000);
     }
   }
@@ -207,8 +213,9 @@ export class ScrapeWorkflowService {
     scrapeWorflow: ScrapeWorkflow,
     scrapersToLaunchCount: number,
     suggestionsScrapeId: string,
+    lang: supportedLanguages,
   ): Promise<ScrapeSession[]> {
-    const fullAnaliticsScraperEp = `${SCRAPE_ANALTICS_FOR_MORE_KYWS_EP}/${suggestionsScrapeId}`;
+    const fullAnaliticsScraperEp = `${SCRAPE_ANALTICS_FOR_MORE_KYWS_EP}?session=${suggestionsScrapeId}&lang=${lang}`;
     let launchedScrapersCount = 0;
     let hasLaunchedEnoughScrapers = false;
     const launchedAnaliticsScrapers: ScrapeSession[] = [];
@@ -222,7 +229,6 @@ export class ScrapeWorkflowService {
       console.log(`launched analtics scrapers id: ${analiticsScrapeId}`);
 
       const scraper = await this.waitAndFindScraperInDb(analiticsScrapeId);
-      console.log(`scraper instanceof ScrapeSession: ${scraper instanceof ScrapeSession}`);
       if (!(scraper instanceof ScrapeSession)) continue;
 
       scrapeWorflow.scrapeSessions.push(scraper);
@@ -232,7 +238,6 @@ export class ScrapeWorkflowService {
       launchedScrapersCount++;
       console.log(`launchedScrapersCount: ${launchedScrapersCount}`);
       hasLaunchedEnoughScrapers = launchedScrapersCount >= scrapersToLaunchCount;
-      console.log(`hasLaunchedEnoughScrapers: ${hasLaunchedEnoughScrapers}`);
     }
 
     console.log(`launched all analtics scrapers needed, count: ${launchedAnaliticsScrapers.length}`);
@@ -241,20 +246,22 @@ export class ScrapeWorkflowService {
 
   private async waitAndFindScraperInDb(scrapeSessionId: string): Promise<ScrapeSession | boolean> {
     console.log('finding scraper in db');
-    let scraperCanNotBeFoundInDb = false;
+    let scraperCouldntBeFound = false;
     let i = 0;
 
-    while (!scraperCanNotBeFoundInDb) {
+    while (!scraperCouldntBeFound) {
       const scraper = await this.scrapeSessionRepo.findOne({ id: scrapeSessionId });
-      console.log(`has found scraper in db: ${Boolean(scraper)}`);
-      if (scraper) return scraper;
+      if (scraper) {
+        console.log(`scraper found in db: ${scrapeSessionId}`);
+        return scraper;
+      }
 
       i++;
-      scraperCanNotBeFoundInDb = i < 5 ? false : true;
-      console.log(`still no analitics scraper in db, scraperCanNotBeFoundInDb: ${scraperCanNotBeFoundInDb}`);
+      if (i >= 5) scraperCouldntBeFound = true;
       await this.utils.wait(2000);
     }
 
+    console.log(`scraper: ${scrapeSessionId} couldn't be found something is not ok`);
     return false;
   }
 

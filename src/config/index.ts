@@ -1,3 +1,5 @@
+import { supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
+
 const { CAPTCHA_2D_TOKEN } = process.env;
 
 const globalConfigs = {
@@ -14,8 +16,12 @@ const localModulConfigurations = {
   global: globalConfigs,
   KeywordIo: {
     headless: globalConfigs.headless,
-    url:
-      'https://keywordtool.io/search/keywords/google/43936310?category=web&keyword=gyerek%20j%C3%A1t%C3%A9kok&country=HU&language=hu#suggestions',
+    urlByLang: {
+      [supportedLanguages.hun]:
+        'https://keywordtool.io/search/keywords/google/43936310?category=web&keyword=gyerek%20j%C3%A1t%C3%A9kok&country=HU&language=hu#suggestions',
+      [supportedLanguages.eng]:
+        'https://keywordtool.io/search/keywords/google/7317086?category=web&keyword=monkey&country=GLB&language=en#suggestions',
+    },
     urlIncludes: 'https://keywordtool.io/search/keywords/google/',
     domain: 'https://keywordtool.io/',
     selectors: {
@@ -28,7 +34,12 @@ const localModulConfigurations = {
   },
   ubersuggest: {
     headless: globalConfigs.headless,
-    url: 'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword=gyerek%20játékok&locId=2348&lang=hu',
+    urlByLang: {
+      [supportedLanguages.hun]:
+        'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword=gyerek%20játékok&locId=2348&lang=hu',
+      [supportedLanguages.eng]:
+        'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword=monkey&lang=en&locId=2840',
+    },
     urlIncludes: 'https://app.neilpatel.com/en/ubersuggest/keyword_ideas?keyword',
     domain: 'https://app.neilpatel.com',
     selectors: {

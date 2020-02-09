@@ -4,7 +4,7 @@ import { csv } from 'csvtojson';
 import { Injectable, Inject } from '@nestjs/common';
 import { Browser, Page } from 'puppeteer';
 
-import { UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+import { UBERSUGGEST_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
@@ -14,6 +14,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { Repository } from 'typeorm';
 import { MakePageScrapableIfNotService } from './make-page-scrapable-if-not/make-page-scrapable-if-not.service';
+import { UbersuggestAnaliticsParams } from '@shared/process-queue/process-queue.types';
 
 @Injectable()
 export class UbersuggestService {
@@ -31,7 +32,7 @@ export class UbersuggestService {
     return this.utils.updateScrapeSessionWithError(scrapeSessionId, error);
   }
 
-  async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string) {
+  async scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId: string, keyword: string, lang: supportedLanguages) {
     console.log(`getting analitics for: ${keyword}`);
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
       scrapeSessionId,
@@ -47,10 +48,10 @@ export class UbersuggestService {
       console.log('scrape session saved');
 
       // tslint:disable-next-line: prefer-const no-var-keyword
-      var { browser, page: pageOnUbersuggest } = await this.getAntiCaptchaPageOnUbersuggest();
+      var { browser, page: pageOnUbersuggest } = await this.getAntiCaptchaPageOnUbersuggest(lang);
       console.log('got scrapeable page');
 
-      await this.makePageScrapableIfNot.do(pageOnUbersuggest, scrapeSessionId);
+      await this.makePageScrapableIfNot.do(pageOnUbersuggest, scrapeSessionId, lang);
 
       await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
       console.log('page could show data succesfully');
@@ -79,11 +80,13 @@ export class UbersuggestService {
     }
   }
 
-  async scrapeAnaliticsForMoreKywsAndUpdateDb(analiticsScrapeSessionId: string, suggestionsScrapeId: string) {
+  async scrapeAnaliticsForMoreKywsAndUpdateDb(params: UbersuggestAnaliticsParams) {
+    const { analiticsScrapeSessionId, suggestionsScrapeId, lang } = params;
     console.log(`start to scrapeAnaliticsForMoreKywsAndUpdateDb: ${analiticsScrapeSessionId} ${suggestionsScrapeId}`);
+
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
       scrapeSessionId: analiticsScrapeSessionId,
-      path: 'analitics/session/:session',
+      path: 'analitics/more',
     };
     const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
 
@@ -98,16 +101,15 @@ export class UbersuggestService {
       try {
         const hasJustStartedScraping = !pageOnUbersuggest;
         if (hasJustStartedScraping) {
-          const pageObj = await this.getAntiCaptchaPageOnUbersuggest();
+          const pageObj = await this.getAntiCaptchaPageOnUbersuggest(lang);
           console.log('got anti captcha page');
           browser = pageObj.browser;
           pageOnUbersuggest = pageObj.page;
         }
 
-        const isPageScrapable = await this.makePageScrapableIfNot.do(pageOnUbersuggest, analiticsScrapeSessionId);
+        const isPageScrapable = await this.makePageScrapableIfNot.do(pageOnUbersuggest, analiticsScrapeSessionId, lang);
         if (isPageScrapable) console.log('page is (or made to be) scrapable');
         else {
-          await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, analiticsScrapeSessionId);
           throw new Error('page is not scrapable, process returns');
         }
 
@@ -120,6 +122,7 @@ export class UbersuggestService {
         keyword = keywordEntity.keyword;
         console.log(`current keyword to get analitics for: ${keyword}`);
       } catch (err) {
+        await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, analiticsScrapeSessionId);
         console.error(`browser error happened`);
         throw new Error(err);
       }
@@ -178,8 +181,8 @@ export class UbersuggestService {
     console.log('scrape session updated to successfull, scrape finished');
   }
 
-  private async getAntiCaptchaPageOnUbersuggest(): Promise<{ browser: Browser; page: Page }> {
-    const { url, headless } = this.config;
+  private async getAntiCaptchaPageOnUbersuggest(lang: supportedLanguages): Promise<{ browser: Browser; page: Page }> {
+    const { urlByLang, headless } = this.config;
     const { downloadsFolder, userDataFolder } = this.globalConfig;
 
     const { browser, page } = await this.puppeteerUtils.getAntiCaptchaBrowser({
@@ -190,7 +193,7 @@ export class UbersuggestService {
 
     await this.puppeteerUtils.preparePageForDetection(page);
 
-    await page.goto(url);
+    await page.goto(urlByLang[lang]);
 
     return {
       browser,

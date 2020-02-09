@@ -20,6 +20,16 @@
       "protocol": "inspector",
       "sourceMaps": true,
       "port": 9229
+    },
+    {
+      "name": "Attach to Child Process",
+      "type": "node",
+      "request": "attach",
+      "restart": true,
+      "cwd": "${workspaceFolder}/dist",
+      "protocol": "inspector",
+      "sourceMaps": true,
+      "port": 9000
     }
   ]
 }

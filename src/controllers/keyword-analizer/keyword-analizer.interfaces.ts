@@ -1,13 +1,18 @@
 import { Browser } from 'puppeteer';
 import { Page } from 'puppeteer-extra-plugin-recaptcha-2/dist/types';
+import { supportedLanguages } from './keyword-analizer.types';
 
 export interface StringifyAbleError {
   message: string;
   stack: string;
 }
 
+export type urlByLang = {
+  [key in supportedLanguages]: string;
+};
+
 export interface KeywordIoConfigI {
-  url: string;
+  urlByLang: urlByLang;
   urlIncludes: string;
   domain: string;
   headless: boolean;
@@ -21,7 +26,7 @@ export interface KeywordIoConfigI {
 }
 
 export interface UbersuggestConfigI {
-  url: string;
+  urlByLang: urlByLang;
   urlIncludes: string;
   domain: string;
   headless: boolean;
@@ -42,11 +47,17 @@ export interface SaveScrapeSessionParamsI {
   isSuccesful?: boolean;
 }
 
-export interface EntityRelationNames {
+export interface EntityRelationNamesI {
   [key: string]: string;
 }
 
 export interface BrowserPackageI {
   browser: Browser;
   page: Page;
+}
+
+export interface ScrapeAnaliticsForMoreKywsAndUpdateDbPAramsI {
+  analiticsScrapeSessionId: string;
+  suggestionsScrapeId: string;
+  lang: supportedLanguages;
 }

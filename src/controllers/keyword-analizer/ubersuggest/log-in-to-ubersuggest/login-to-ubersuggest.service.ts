@@ -41,7 +41,6 @@ export class LogInToUbersuggestService {
       }
     } while (!successfullyLoggedIn && loginTriesCounter < 10);
 
-    console.log('got logged in');
     return successfullyLoggedIn;
   }
 }

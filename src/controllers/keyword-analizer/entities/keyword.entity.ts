@@ -9,7 +9,7 @@ import {
   JoinTable,
 } from 'typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
-import { EntityRelationNames, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
+import { EntityRelationNamesI, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
 
 @Entity()
 export class Keyword {
@@ -69,8 +69,8 @@ export class Keyword {
   })
   updateAt: Date;
 
-  static getRelationNames(): EntityRelationNames {
-    const relationNames: EntityRelationNames = {};
+  static getRelationNames(): EntityRelationNamesI {
+    const relationNames: EntityRelationNamesI = {};
 
     const sampleScrapeSession = new ScrapeSession();
     const keyw = new Keyword();

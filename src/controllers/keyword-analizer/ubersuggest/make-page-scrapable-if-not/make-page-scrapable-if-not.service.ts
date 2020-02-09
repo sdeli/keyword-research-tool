@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { PuppeteerUtilsService } from '@shared/puppeteer-utils/pupeteer-utils.service';
 import { Page } from 'puppeteer-extra-plugin-recaptcha-2/dist/types';
 import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
-import { UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+import { UBERSUGGEST_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
 import { LogInToUbersuggestService } from '../log-in-to-ubersuggest/login-to-ubersuggest.service';
 import { UtilsService } from '@utils/utils.service';
 
@@ -15,13 +15,13 @@ export class MakePageScrapableIfNotService {
     private readonly utils: UtilsService,
   ) {}
 
-  async do(pageOnUbersuggest: Page, scrapeSessionId: string): Promise<boolean> {
+  async do(pageOnUbersuggest: Page, scrapeSessionId: string, lang: supportedLanguages): Promise<boolean> {
     try {
       await this.logInService.logInIfNeeded(pageOnUbersuggest);
 
       await this.puppeteerUtils.solveCaptchaIfNeeded(pageOnUbersuggest, 3000);
 
-      await this.navigateToKeywordIdeaSearcPageIfNeeded(pageOnUbersuggest, scrapeSessionId);
+      await this.navigateToKeywordIdeaSearcPageIfNeeded(pageOnUbersuggest, scrapeSessionId, lang);
 
       await this.puppeteerUtils.solveCaptchaIfNeeded(pageOnUbersuggest, 3000);
 
@@ -35,6 +35,7 @@ export class MakePageScrapableIfNotService {
   private async navigateToKeywordIdeaSearcPageIfNeeded(
     pageOnUbersuggest: Page,
     scrapeSessionId: string,
+    lang: supportedLanguages,
   ): Promise<void> {
     const maxTryCount = 15;
     let tryCont = 0;
@@ -42,7 +43,7 @@ export class MakePageScrapableIfNotService {
 
     while (!succesfullyNavigatedToPage && tryCont < maxTryCount) {
       try {
-        await pageOnUbersuggest.goto(this.config.url);
+        await pageOnUbersuggest.goto(this.config.urlByLang[lang]);
         await pageOnUbersuggest.waitForSelector(this.config.selectors.researchKeywordInput);
         succesfullyNavigatedToPage = true;
       } catch (err) {
