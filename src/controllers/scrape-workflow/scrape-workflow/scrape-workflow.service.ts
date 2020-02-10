@@ -29,10 +29,11 @@ export class ScrapeWorkflowService {
       var scrapeWorflow = await this.saveScrapeWorkflow(currPath);
       console.log('scrape workflow saved');
 
-      // const suggestionScrapeSession = await this.getSuggestionsIntoDb(keyword, lang);
-      const suggestionScrapeSession = await this.scrapeSessionRepo.findOne({
-        id: 'f6259760-4b5a-11ea-8f76-075564b8e3c7',
-      });
+      const suggestionScrapeSession = await this.getSuggestionsIntoDb(keyword, lang);
+      console.log(suggestionScrapeSession.id);
+      // const suggestionScrapeSession = await this.scrapeSessionRepo.findOne({
+      //   id: 'f6259760-4b5a-11ea-8f76-075564b8e3c7',
+      // });
 
       scrapeWorflow.scrapeSessions = [suggestionScrapeSession];
       await this.scrapeWorkflowRepo.save(scrapeWorflow);

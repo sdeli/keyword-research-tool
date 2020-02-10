@@ -1,6 +1,5 @@
 # Tickets
 
-1. **Create feature to switch between English And Hungarian language**
 1. **Change 'waitForSleector' to 'pollForSelector'**
    - in 'searchForKeywordOnPage' when the search button is hit data doesnt load because a captcha has appeared and so the waitForSelector method errors out
 1. **Create Ip dispenser**
