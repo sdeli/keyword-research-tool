@@ -1,8 +1,10 @@
-import { Controller, Get, Header, Param, Query } from '@nestjs/common';
+import { Controller, Get, Header, Param, Query, ParseIntPipe } from '@nestjs/common';
 import { ScrapeWorkflowService } from './scrape-workflow/scrape-workflow.service';
 import { Repository } from 'typeorm';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
+import { LanguagePipe } from '@keyword-analizer/pipes/language.pipe';
 
 @Controller('scrape-workflow')
 export class ScrapeWorkflowController {
@@ -33,9 +35,12 @@ export class ScrapeWorkflowController {
   }
 
   @Get('one')
-  analizeKeywordsOfOne(@Query('keyword') keyword: string, @Query('concurrency') concurrency: string = '2') {
-    const concurrencyNum = parseInt(concurrency, 10);
-    this.scrapeManagerService.analizeKeywordsOfOne(keyword, concurrencyNum).catch(e => {
+  analizeKeywordsOfOne(
+    @Query('keyword') keyword: string,
+    @Query('concurrency') concurrency: number = 2,
+    @Query('lang', LanguagePipe) lang: supportedLanguages,
+  ) {
+    this.scrapeManagerService.analizeKeywordsOfOne(keyword, concurrency, lang).catch(e => {
       console.error(e);
     });
   }

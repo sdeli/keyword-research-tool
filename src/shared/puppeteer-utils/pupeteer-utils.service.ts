@@ -18,7 +18,7 @@ interface BrowserDataI {
 
 interface PageOptsI {
   headless: boolean;
-  userDataDir: string;
+  userDataDir?: string;
   downloadPath: string;
 }
 
@@ -52,7 +52,7 @@ export class PuppeteerUtilsService {
     const pupeteerExtraOpts = {
       headless,
       slowMo: 50,
-      userDataDir,
+      userDataDir: userDataDir ? userDataDir : undefined,
       executablePath: '/usr/bin/google-chrome-stable',
       args: ['--disable-gpu', '--disable-software-rasterizer'],
     };

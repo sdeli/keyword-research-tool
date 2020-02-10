@@ -1,6 +1,6 @@
 import { Entity, Column, CreateDateColumn, ManyToOne, PrimaryColumn, UpdateDateColumn, ManyToMany } from 'typeorm';
 import { ScrapeWorkflow } from '@scrape-workflow/entities/scrape-workflow.entity';
-import { EntityRelationNames, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
+import { EntityRelationNamesI, StringifyAbleError } from '@keyword-analizer/keyword-analizer.interfaces';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 
 @Entity()
@@ -43,8 +43,8 @@ export class ScrapeSession {
   })
   updateAt: Date;
 
-  static getRelationNames(): EntityRelationNames {
-    const relationNames: EntityRelationNames = {};
+  static getRelationNames(): EntityRelationNamesI {
+    const relationNames: EntityRelationNamesI = {};
 
     const sampleScrapeWorkflow = new ScrapeWorkflow();
     const sampleKeywords = [new Keyword()];

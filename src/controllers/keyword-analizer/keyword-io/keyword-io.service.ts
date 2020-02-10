@@ -12,11 +12,12 @@ import {
   SaveScrapeSessionParamsI,
   BrowserPackageI,
 } from '@keyword-analizer/keyword-analizer.interfaces';
-import { KEYWORD_IO_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+import { KEYWORD_IO_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
 import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import { KeywordIoScraperParams } from '@shared/process-queue/process-queue.types';
 
 @Injectable()
 export class KeywordIoService {
@@ -32,10 +33,12 @@ export class KeywordIoService {
     return this.utils.updateScrapeSessionWithError(scrapeSessionId, error);
   }
 
-  async scrapeSuggestionsForOneAndSaveInDb(scrapeSessionId: string, keyword: string): Promise<void> {
+  async scrapeSuggestionsForOneAndSaveInDb(params: KeywordIoScraperParams): Promise<void> {
+    const { suggestionsScrapeSessionId, keyword, lang } = params;
     console.log(`getting suggestions for: ${keyword}`);
+
     const saveScrapeSessionParams: SaveScrapeSessionParamsI = {
-      scrapeSessionId,
+      scrapeSessionId: suggestionsScrapeSessionId,
       path: 'keyword/suggestions/:keyword',
       keyword,
     };
@@ -44,10 +47,10 @@ export class KeywordIoService {
       const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session saved');
 
-      const browserPackage = await this.getPageOnKywdIo();
+      const browserPackage = await this.getPageOnKywdIo(lang);
       if (!browserPackage) {
         console.log('keywordio always detects');
-        await this.utils.updateScrapeSessionWithError(scrapeSessionId, Error('keywordio always detects'));
+        await this.utils.updateScrapeSessionWithError(suggestionsScrapeSessionId, Error('keywordio always detects'));
       }
 
       // tslint:disable-next-line: no-var-keyword prefer-const
@@ -82,14 +85,14 @@ export class KeywordIoService {
       console.log('scrape session updated to be succesfuls');
     } catch (err) {
       console.error(err);
-      await this.puppeteerUtils.makeScreenshot(pageOnKwIo, scrapeSessionId);
-      await this.utils.updateScrapeSessionWithError(scrapeSessionId, err);
+      await this.puppeteerUtils.makeScreenshot(pageOnKwIo, suggestionsScrapeSessionId);
+      await this.utils.updateScrapeSessionWithError(suggestionsScrapeSessionId, err);
       console.log('scrape session updated with error');
     }
   }
 
-  async getPageOnKywdIo(): Promise<BrowserPackageI | boolean> {
-    const { url, headless } = this.config;
+  async getPageOnKywdIo(lang: supportedLanguages): Promise<BrowserPackageI | boolean> {
+    const { urlByLang, headless } = this.config;
     const { downloadsFolder, userDataFolder } = this.globalConf;
 
     let detectedCount = 0;
@@ -106,7 +109,7 @@ export class KeywordIoService {
 
         await this.puppeteerUtils.preparePageForDetection(page);
 
-        await page.goto(url);
+        await page.goto(urlByLang[lang]);
 
         const isPageScrapable = await this.isPageScrapable(page);
         if (isPageScrapable) break;

@@ -1,19 +1,18 @@
 import uuidv1 from 'uuid/v1';
-import { Controller, Get, Header, Param } from '@nestjs/common';
+import { Controller, Get, Header, Query } from '@nestjs/common';
 
 import { UbersuggestService } from './ubersuggest/ubersuggest.service';
-import { KeywordIoService } from './keyword-io/keyword-io.service';
 import { ProcessQueueService } from '@process-queue/process-queue/process-queue.service';
 import { UbersuggestAnaliticsParams, KeywordIoScraperParams } from '@process-queue/process-queue.types';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { rejects } from 'assert';
+import { supportedLanguages } from './keyword-analizer.types';
+import { LanguagePipe } from './pipes/language.pipe';
 
 @Controller('keyword')
 export class KeywordAnalizerController {
   constructor(
-    private readonly kywIoService: KeywordIoService,
     private readonly ubersuggestService: UbersuggestService,
     private readonly processQueueService: ProcessQueueService,
     @InjectRepository(Keyword) private readonly keywordRepo: Repository<Keyword>,
@@ -41,44 +40,54 @@ export class KeywordAnalizerController {
   `;
   }
 
-  @Get('suggestions/:keyword')
-  getKeywordSuggestionsForOne(@Param('keyword') keyword: string) {
+  @Get('suggestions/one')
+  getKeywordSuggestionsForOne(
+    @Query('keyword') keyword: string,
+    @Query('lang', LanguagePipe) lang: supportedLanguages,
+  ) {
     const params = new KeywordIoScraperParams({
       suggestionsScrapeSessionId: uuidv1(),
       keyword,
+      lang,
     });
 
-    console.log('starting new analitics robot with conf:');
-    console.log(params);
     this.processQueueService.register(params);
 
     return params.suggestionsScrapeSessionId;
   }
 
-  @Get('analitics/keyword/:keyword')
-  async scrapeAnaliticsForOneAndSaveInDb(@Param('keyword') keyword: string) {
+  @Get('analitics/one')
+  async scrapeAnaliticsForOneAndSaveInDb(
+    @Query('keyword') keyword: string,
+    @Query('lang', LanguagePipe) lang: supportedLanguages,
+  ) {
     const scrapeSessionId = uuidv1();
-    this.ubersuggestService.scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId, keyword).catch(err => {
+    this.ubersuggestService.scrapeAnaliticsForOneAndSaveInDb(scrapeSessionId, keyword, lang).catch(err => {
       console.error(err);
     });
 
     return scrapeSessionId;
   }
 
-  @Get('analitics/session/:session')
-  async scrapeAnaliticsForMoreAndSaveInDb(@Param('session') suggestionsScrapeId: string) {
+  @Get('analitics/more')
+  async scrapeAnaliticsForMoreAndSaveInDb(
+    @Query('session') suggestionsScrapeId: string,
+    @Query('lang', LanguagePipe) lang: supportedLanguages,
+  ) {
     const analiticsConf = new UbersuggestAnaliticsParams({
       analiticsScrapeSessionId: uuidv1(),
       suggestionsScrapeId,
+      lang,
     });
 
-    console.log('starting new analitics robot with conf:');
-    console.log(analiticsConf);
     this.processQueueService.register(analiticsConf);
 
     return analiticsConf.analiticsScrapeSessionId;
   }
 
-  // @Get('test/')
-  // async test() {}
+  // @Get('test')
+  // async test() {
+  //   console.log(supportedLanguages['eng']);
+  //   console.log(supportedLanguages['majom']);
+  // }
 }
