@@ -53,7 +53,7 @@ export class UbersuggestService {
 
       await this.makePageScrapableIfNot.do(pageOnUbersuggest, scrapeSessionId, lang);
 
-      await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
+      await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword, scrapeSessionId, lang);
       console.log('page could show data succesfully');
 
       const { err, fileToDownloadPath } = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
@@ -128,7 +128,7 @@ export class UbersuggestService {
       }
 
       try {
-        await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword);
+        await this.searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest, keyword, scrapeSession.id, lang);
         console.log('keyword analitics could be loaded into page');
 
         const { err, fileToDownloadPath } = await this.downloadKeywAnaliticsCsv(pageOnUbersuggest, keyword);
@@ -201,13 +201,18 @@ export class UbersuggestService {
     };
   }
 
-  private async searchForKeywordOnPageUntilItShowsCorrectData(pageOnUbersuggest: Page, keyword: string) {
+  private async searchForKeywordOnPageUntilItShowsCorrectData(
+    pageOnUbersuggest: Page,
+    keyword: string,
+    scrapeSessionId: string,
+    lang: supportedLanguages,
+  ) {
     const { researchKeywordInput } = this.config.selectors;
     let hasPageShownCorrectData = false;
     let tryCounter = 0;
 
     do {
-      await this.searchForKeywordOnPage(pageOnUbersuggest, keyword);
+      await this.searchForKeywordOnPage(pageOnUbersuggest, keyword, scrapeSessionId, lang);
       // researchKywInputsValue if equals to the actual keyword then it indicates that the search has happened
       // to the correct keyword and no to an other one... the page tricks with other keywords sometimes
       const researchKywInputsValue = await this.puppeteerUtils.getInputFieldsValue(
@@ -226,13 +231,39 @@ export class UbersuggestService {
     if (pageFailedToShowCorrectData) throw new Error('Page didnt load keyword analitics data');
   }
 
-  private async searchForKeywordOnPage(pageOnUbersuggest: Page, keyword: string): Promise<void> {
+  private async searchForKeywordOnPage(
+    pageOnUbersuggest: Page,
+    keyword: string,
+    scrapeSessionId: string,
+    lang: supportedLanguages,
+  ): Promise<void> {
     console.log(`searching for keyword: ${keyword}`);
+    let clickedKeywordResearchBtnCounter = 0;
+    let isKeywordResearchBtnUnresponsive = false;
+
     const { keywordResearchResAppearedSel } = this.config.selectors;
     await this.setKeywResearchInputsValue(pageOnUbersuggest, keyword);
     await this.utils.waitBetween(900, 1500);
-    await this.clickStartKeywordResearchBtn(pageOnUbersuggest);
-    await pageOnUbersuggest.waitForSelector(keywordResearchResAppearedSel);
+
+    while (!isKeywordResearchBtnUnresponsive) {
+      try {
+        await this.clickStartKeywordResearchBtn(pageOnUbersuggest);
+        await pageOnUbersuggest.waitForSelector(keywordResearchResAppearedSel);
+        return;
+      } catch (err) {
+        clickedKeywordResearchBtnCounter++;
+        console.log(
+          `keywords didnt appear after clicking: ${keywordResearchResAppearedSel}, ${clickedKeywordResearchBtnCounter}`,
+        );
+
+        isKeywordResearchBtnUnresponsive = clickedKeywordResearchBtnCounter > 15;
+        await this.makePageScrapableIfNot.do(pageOnUbersuggest, scrapeSessionId, lang);
+        await this.utils.wait(3000);
+      }
+    }
+
+    const screenshosName = await this.puppeteerUtils.makeScreenshot(pageOnUbersuggest, scrapeSessionId);
+    throw new Error(`clicking keyword research btn was unsuccesful: ${screenshosName}`);
   }
 
   private async setKeywResearchInputsValue(pageOnUbersuggest: Page, keyword: string): Promise<void> {

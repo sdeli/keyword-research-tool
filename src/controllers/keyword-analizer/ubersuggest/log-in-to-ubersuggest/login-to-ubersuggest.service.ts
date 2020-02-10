@@ -2,10 +2,16 @@ import { Injectable, Inject } from '@nestjs/common';
 import { UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
 import { UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
 import { Page } from 'puppeteer-extra-plugin-recaptcha-2/dist/types';
+import { UtilsService } from '@utils/utils.service';
+import { PuppeteerUtilsService } from '@shared/puppeteer-utils/pupeteer-utils.service';
 
 @Injectable()
 export class LogInToUbersuggestService {
-  constructor(@Inject(UBERSUGGEST_CONFIG_TOKEN) private readonly config: UbersuggestConfigI) {}
+  constructor(
+    @Inject(UBERSUGGEST_CONFIG_TOKEN) private readonly config: UbersuggestConfigI,
+    private readonly utils: UtilsService,
+    private readonly puppeteerUtils: PuppeteerUtilsService,
+  ) {}
   async logInIfNeeded(pageOnUbersuggest: Page) {
     const isLoggedIn = await this.isLoggedInToUbersuggest(pageOnUbersuggest);
     console.log('is logged in: ' + isLoggedIn);
@@ -38,6 +44,8 @@ export class LogInToUbersuggestService {
         successfullyLoggedIn = true;
       } catch (e) {
         loginTriesCounter++;
+        await this.puppeteerUtils.solveCaptchaIfNeeded(pageOnUbersuggest, 0);
+        await this.utils.wait(3000);
       }
     } while (!successfullyLoggedIn && loginTriesCounter < 10);
 

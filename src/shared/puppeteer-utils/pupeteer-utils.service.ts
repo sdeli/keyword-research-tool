@@ -149,10 +149,11 @@ export class PuppeteerUtilsService {
     }
   }
 
-  async makeScreenshot(page: Page, phrase: string): Promise<void> {
+  async makeScreenshot(page: Page, phrase: string): Promise<string> {
     const now = new Date();
     const screenshotName = `/${now}-${phrase}.png`;
     await page.screenshot({ path: `${process.cwd()}/src/assets/${screenshotName}` });
     console.log(`screenshot made: ${screenshotName}`);
+    return screenshotName;
   }
 }
