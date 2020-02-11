@@ -1,7 +1,5 @@
 # Tickets
 
-1. **Change 'waitForSleector' to 'pollForSelector'**
-   - in 'searchForKeywordOnPage' when the search button is hit data doesnt load because a captcha has appeared and so the waitForSelector method errors out
 1. **Create Ip dispenser**
 1. **Create bulk keyword research feature**
 1. **Create continous keyword research feature**
