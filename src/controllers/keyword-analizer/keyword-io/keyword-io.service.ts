@@ -1,23 +1,23 @@
-import { UtilsService } from '@utils/utils.service';
-import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
-import { Page, Browser } from 'puppeteer';
-// @ts-ignore
-import { csv } from 'csvtojson';
-import { Injectable, Inject } from '@nestjs/common';
-import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-
-import {
-  KeywordIoConfigI,
-  SaveScrapeSessionParamsI,
-  BrowserPackageI,
-} from '@keyword-analizer/keyword-analizer.interfaces';
-import { KEYWORD_IO_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
-import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
-import { GlobalConfigI } from '@shared/shared.interfaces';
 import { Keyword } from '@keyword-analizer/entities/keyword.entity';
 import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
+import {
+  BrowserPackageI,
+  KeywordIoConfigI,
+  SaveScrapeSessionParamsI,
+} from '@keyword-analizer/keyword-analizer.interfaces';
+import { KEYWORD_IO_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
+import { Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
 import { KeywordIoScraperParams } from '@shared/process-queue/process-queue.types';
+import { GlobalConfigI } from '@shared/shared.interfaces';
+import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
+import { UtilsService } from '@utils/utils.service';
+// @ts-ignore
+import { csv } from 'csvtojson';
+import { writeFileSync } from 'fs';
+import { Page } from 'puppeteer';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class KeywordIoService {
@@ -47,7 +47,7 @@ export class KeywordIoService {
       const scrapeSession = await this.utils.saveScrapeSession(saveScrapeSessionParams);
       console.log('scrape session saved');
 
-      const browserPackage = await this.getPageOnKywdIo(lang);
+      const browserPackage = await this.getPageOnKywdIo(lang, suggestionsScrapeSessionId);
       if (!browserPackage) {
         console.log('keywordio always detects');
         await this.utils.updateScrapeSessionWithError(suggestionsScrapeSessionId, Error('keywordio always detects'));
@@ -86,12 +86,17 @@ export class KeywordIoService {
     } catch (err) {
       console.error(err);
       await this.puppeteerUtils.makeScreenshot(pageOnKwIo, suggestionsScrapeSessionId);
+      const html = await pageOnKwIo.content();
+      writeFileSync('majom.html', html, 'utf-8');
       await this.utils.updateScrapeSessionWithError(suggestionsScrapeSessionId, err);
       console.log('scrape session updated with error');
     }
   }
 
-  async getPageOnKywdIo(lang: supportedLanguages): Promise<BrowserPackageI | boolean> {
+  async getPageOnKywdIo(
+    lang: supportedLanguages,
+    suggestionsScrapeSessionId: string,
+  ): Promise<BrowserPackageI | boolean> {
     const { urlByLang, headless } = this.config;
     const { downloadsFolder, userDataFolder } = this.globalConf;
 
@@ -111,7 +116,7 @@ export class KeywordIoService {
 
         await page.goto(urlByLang[lang]);
 
-        const isPageScrapable = await this.isPageScrapable(page);
+        const isPageScrapable = await this.isPageScrapable(page, suggestionsScrapeSessionId);
         if (isPageScrapable) break;
         else {
           detectedCount++;
@@ -133,10 +138,10 @@ export class KeywordIoService {
     };
   }
 
-  private async isPageScrapable(pageOnKwIo: Page): Promise<boolean> {
+  private async isPageScrapable(pageOnKwIo: Page, suggestionsScrapeSessionId: string): Promise<boolean> {
     const {
       urlIncludes,
-      selectors: { researchKeywordInput, startKywResBtn },
+      selectors: { researchKeywordInput, startKywResBtn, socialModalSel },
     } = this.config;
 
     const currUrl = pageOnKwIo.url();
@@ -149,7 +154,41 @@ export class KeywordIoService {
     const startKywResBtnElem = await pageOnKwIo.$(startKywResBtn);
     if (!startKywResBtnElem) return false;
 
+    console.log(socialModalSel);
+    const isPageBlockingsocialModalVisible = await this.puppeteerUtils.isVisible(pageOnKwIo, socialModalSel);
+
+    console.log(!!isPageBlockingsocialModalVisible);
+    if (isPageBlockingsocialModalVisible) {
+      await this.closeSocialModal(pageOnKwIo, suggestionsScrapeSessionId);
+    }
+
     return true;
+  }
+
+  private async closeSocialModal(pageOnKwIo: Page, suggestionsScrapeSessionId: string): Promise<boolean> {
+    console.log('closing social modal');
+    const {
+      selectors: { socialModalSel },
+    } = this.config;
+
+    let clickedKeywordResearchBtnCounter = 0;
+    const maxClickTryCount = 15;
+
+    while (clickedKeywordResearchBtnCounter <= maxClickTryCount) {
+      try {
+        await pageOnKwIo.click(socialModalSel);
+        await this.puppeteerUtils.isVisible(pageOnKwIo, socialModalSel);
+        console.log('succesfully closed social modal');
+        return true;
+      } catch (err) {
+        clickedKeywordResearchBtnCounter++;
+        console.log('social modal is still visible: ' + clickedKeywordResearchBtnCounter);
+        await this.puppeteerUtils.makeScreenshot(pageOnKwIo, `${suggestionsScrapeSessionId}-social-modal-visible`);
+        await this.utils.wait(3000);
+      }
+    }
+
+    throw new Error('unable to close social modal');
   }
 
   private async researchForKeywordOnKywIo(pageOnKwIo: Page, keyword: string): Promise<void> {

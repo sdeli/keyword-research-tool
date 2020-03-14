@@ -1,15 +1,14 @@
-import { UtilsService } from '@utils/utils.service';
-import { Browser, Page } from 'puppeteer';
-
-import puppeteerExtra from 'puppeteer-extra';
-import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha-2';
-// tslint:disable-next-line:no-var-requires
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-
-import { PreparePageForDetection } from './prepare-page-for-detection/prepare-page-for-detection';
 import { Inject, Injectable } from '@nestjs/common';
 import { GlobalConfigI } from '@shared/shared.interfaces';
 import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
+import { UtilsService } from '@utils/utils.service';
+import { Browser, Page } from 'puppeteer';
+import puppeteerExtra from 'puppeteer-extra';
+import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha-2';
+import { PreparePageForDetection } from './prepare-page-for-detection/prepare-page-for-detection';
+
+// tslint:disable-next-line:no-var-requires
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 
 interface BrowserDataI {
   browser: Browser;
@@ -155,5 +154,18 @@ export class PuppeteerUtilsService {
     await page.screenshot({ path: `${process.cwd()}/src/assets/${screenshotName}` });
     console.log(`screenshot made: ${screenshotName}`);
     return screenshotName;
+  }
+
+  async isVisible(page, selector) {
+    return await page.evaluate(selector => {
+      const e = document.querySelector(selector);
+      if (e) {
+        const style = window.getComputedStyle(e);
+
+        return style && style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+      } else {
+        return false;
+      }
+    }, selector);
   }
 }

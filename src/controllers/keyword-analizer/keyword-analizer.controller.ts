@@ -85,6 +85,13 @@ export class KeywordAnalizerController {
     return analiticsConf.analiticsScrapeSessionId;
   }
 
+  // @Get('kill-analitics-scraper')
+  // async killAnaliticsScraper(@Query('scraperId') scraperId: string) {
+  //   this.processQueueService.register(analiticsConf);
+
+  //   return analiticsConf.analiticsScrapeSessionId;
+  // }
+
   // @Get('test')
   // async test() {
   //   console.log(supportedLanguages['eng']);

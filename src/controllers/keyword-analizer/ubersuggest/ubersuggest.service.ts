@@ -1,20 +1,22 @@
+import { Keyword } from '@keyword-analizer/entities/keyword.entity';
+import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { SaveScrapeSessionParamsI, UbersuggestConfigI } from '@keyword-analizer/keyword-analizer.interfaces';
+import { supportedLanguages, UBERSUGGEST_CONFIG_TOKEN } from '@keyword-analizer/keyword-analizer.types';
+// import { MakePageScrapableIfNotService } from './make-page-scrapable-if-not/make-page-scrapable-if-not.service';
+import { Inject, Injectable } from '@nestjs/common';
+// import { Inject, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
+import { UbersuggestAnaliticsParams } from '@shared/process-queue/process-queue.types';
+import { GlobalConfigI } from '@shared/shared.interfaces';
+// import { GlobalConfigI } from '@shared/shared.interfaces';
+import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
+import { UtilsService } from '@utils/utils.service';
 // @ts-ignore
 import { csv } from 'csvtojson';
-import { Injectable, Inject } from '@nestjs/common';
 import { Browser, Page } from 'puppeteer';
-
-import { UBERSUGGEST_CONFIG_TOKEN, supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
-import { GlobalConfigI } from '@shared/shared.interfaces';
-import { GLOBAL_CONFIG_TOKEN } from '@shared/shared.types';
-import { PuppeteerUtilsService } from '@puppeteer-utils/pupeteer-utils.service';
-import { UtilsService } from '@shared/utils';
-import { Keyword } from '@keyword-analizer/entities/keyword.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ScrapeSession } from '@keyword-analizer/entities/scrape-session.entity';
 import { Repository } from 'typeorm';
 import { MakePageScrapableIfNotService } from './make-page-scrapable-if-not/make-page-scrapable-if-not.service';
-import { UbersuggestAnaliticsParams } from '@shared/process-queue/process-queue.types';
 
 @Injectable()
 export class UbersuggestService {
@@ -343,7 +345,7 @@ export class UbersuggestService {
       exportToCsvButtons[0].click();
     });
 
-    console.log('waiting for download file');
+    console.log('waiting to download file');
     const couldFileBeDownloaded = await this.utils.waitToDownloadFileByPoll(fileToDownloadPath);
 
     console.log(`could file be downloaded: ${couldFileBeDownloaded}`);
@@ -466,6 +468,8 @@ export class UbersuggestService {
 
   // keyword suggestions are keywords without analitics
   async getKeywordSuggestion(suggestionScrapeId: string): Promise<Keyword> {
+    console.log(`getting keyword with the suggestionScrapeId of: ${suggestionScrapeId}`);
+
     const keyword = await this.keywordRepo
       .createQueryBuilder('keyword')
       .innerJoinAndSelect('keyword.scrapeSessions', 'scrapeSessions', 'scrapeSessions.id = :scrapeId', {

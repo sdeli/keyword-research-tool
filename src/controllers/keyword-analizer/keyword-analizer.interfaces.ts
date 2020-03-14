@@ -21,6 +21,7 @@ export interface KeywordIoConfigI {
     downloadCsvBtnSel: string;
     startKywResBtn: string;
     keywordsAppearedSel: string;
+    socialModalSel: string;
   };
   cookies: string[];
 }

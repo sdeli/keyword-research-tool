@@ -29,6 +29,7 @@ const localModulConfigurations = {
       downloadCsvBtnSel: '#edit-export-csv--4',
       startKywResBtn: '#edit-submit--4',
       keywordsAppearedSel: '#kt-keywords-search-results-form h4.search-results-title',
+      socialModalSel: '.ktCommonShareModal-processed [data-dismiss="modal"]',
     },
     cookies: [],
   },

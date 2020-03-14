@@ -141,15 +141,17 @@ export class ScrapeWorkflowService {
     lang: supportedLanguages,
   ) {
     while (true) {
-      const hasKeywsWithoutAnalitics = await this.hasKeywSuggestionsWithoutAnalitics(suggestionsScrapeId);
-      console.log(`has keyword suggestions without analitics: ${hasKeywsWithoutAnalitics}`);
-      if (!hasKeywsWithoutAnalitics) return;
+      const keywsWithoutAnalitics = await this.hasKeywSuggestionsWithoutAnalitics(suggestionsScrapeId);
+      console.log(`has keyword suggestions without analitics: ${keywsWithoutAnalitics}`);
+      if (!keywsWithoutAnalitics) return;
 
       scrapeWorflow = await this.scrapeWorkflowRepo.findOne({ id: scrapeWorflow.id });
       const { runningScrapersCount, stuckScraperIds } = await this.getRunningAnaliticsScrapersCount(
         scrapeWorflow.scrapeSessions,
       );
       console.log(`runningScrapersCount: ${runningScrapersCount}`);
+
+      // this.killStuckScrapers(stuckScraperIds);
 
       const justStartedOrSomeScrapersHaveDied = runningScrapersCount < concurrencyCount;
       console.log(`justStartedOrSomeScrapersHaveDied: ${justStartedOrSomeScrapersHaveDied}`);
@@ -293,4 +295,8 @@ export class ScrapeWorkflowService {
     const isScraperStuck = newestKeyword.updateAt < fiveMinutesBefore;
     return isScraperStuck;
   }
+
+  // private async killStuckScrapers(stuckScraperIds: string[]) {
+  //   await rp.get(scrapeSuggestionsForOneAndSaveInDbEp);
+  // }
 }
