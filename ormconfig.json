@@ -2,8 +2,12 @@
   "type": "postgres",
   "synchronize": true,
   "logging": false,
-    "seeds": ["dist/seeds/*.seed.js"],
-    "factories": ["dist/seeds/*.factory.js"],
+  "seeds": [
+    "dist/seeds/*.seed.js"
+  ],
+  "factories": [
+    "dist/seeds/*.factory.js"
+  ],
   "entities": [
     "dist/**/*.entity.js"
   ],

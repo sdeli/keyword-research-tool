@@ -3,7 +3,7 @@ import { supportedLanguages } from '@keyword-analizer/keyword-analizer.types';
 const { CAPTCHA_2D_TOKEN } = process.env;
 
 const globalConfigs = {
-  headless: true,
+  headless: false,
   captcha2dToken: CAPTCHA_2D_TOKEN,
   captcha2dId: '2captcha',
   userAgent:

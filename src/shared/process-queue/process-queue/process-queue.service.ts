@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ChildProcess, spawn, SpawnOptions } from 'child_process';
 import { UbersuggestAnaliticsParams, KeywordIoScraperParams } from '@process-queue/process-queue.types';
 
-const NODE_EXECUTABLE = '/home/sandor/.nvm/versions/node/v10.16.3/bin/node';
+const NODE_EXECUTABLE = '/home/sandor/.nvm/versions/node/v12.16.1/bin/node';
 const SCRAPE_ANALITICS_FOR_MORE_KYWS_AND_UPDATE_DB_PATH = `${__dirname}/scraper-processes/scrape-analitics-for-more-kyws-and-update-db.process.js`;
 const GET_KEYWORD_SUGGESTIONS_FOR_ONE = `${__dirname}/scraper-processes/get-keyword-suggestions-for-one.process.js`;
 

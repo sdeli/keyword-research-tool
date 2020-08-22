@@ -28,7 +28,7 @@ export class PuppeteerUtilsService {
     @Inject(GLOBAL_CONFIG_TOKEN) private readonly globalConfig: GlobalConfigI,
     private readonly prepare: PreparePageForDetection,
     private readonly utils: UtilsService,
-  ) {}
+  ) { }
 
   preparePageForDetection(page: Page) {
     return this.prepare.do(page);
@@ -52,9 +52,11 @@ export class PuppeteerUtilsService {
     const pupeteerExtraOpts = {
       headless,
       slowMo: 50,
-      userDataDir: userDataDir ? userDataDir : undefined,
-      executablePath: '/usr/bin/google-chrome-stable',
-      args: ['--disable-gpu', '--disable-software-rasterizer'],
+      ignoreDefaultArgs: ['--disable-extensions'],
+      userDataDir: '/mnt/c/Users/bgfkszm/AppData/Local/Temp/puppeteer_user_data',
+      // userDataDir: userDataDir ? userDataDir : undefined,
+      executablePath: '/mnt/c/Program\ Files\ \(x86\)/Google/Chrome/Application/chrome.exe',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
     };
 
     const browser = await puppeteerExtra.launch(pupeteerExtraOpts);
