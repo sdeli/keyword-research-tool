@@ -57,7 +57,7 @@
     "request-promise": "^4.2.5",
     "rimraf": "^3.0.1",
     "ttypescript": "^1.5.10",
-    "typeorm": "^0.2.22",
+    "typeorm": "^0.2.25",
     "typeorm-seeding": "^1.2.0",
     "uuid": "^3.4.0"
   },
