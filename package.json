@@ -35,7 +35,7 @@
   "dependencies": {
     "@nestjs/common": "^6.11.6",
     "@nestjs/core": "^6.11.6",
-    "@nestjs/platform-express": "^6.11.6",
+    "@nestjs/platform-express": "^9.2.1",
     "@nestjs/typeorm": "^6.2.0",
     "@types/puppeteer": "^2.0.0",
     "@types/request-promise": "^4.1.45",
